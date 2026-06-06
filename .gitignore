@@ -1,0 +1,6 @@
+# macOS metadata
+.DS_Store
+
+# Generated build artifacts, downloads, and outputs
+/artifacts/
+.build-sandboxed-obsidian.lock/

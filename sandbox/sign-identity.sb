@@ -1,0 +1,91 @@
+(version 1)
+
+(deny default)
+
+(allow process-fork)
+(allow process-exec
+  (literal "/bin/chmod")
+  (literal "/bin/cp")
+  (literal "/bin/mkdir")
+  (literal "/bin/rm")
+  (literal "/bin/zsh")
+  (literal "/usr/bin/awk")
+  (literal "/usr/bin/codesign")
+  (literal "/usr/bin/dirname")
+  (literal "/usr/bin/env")
+  (literal "/usr/bin/file")
+  (literal "/usr/bin/find")
+  (literal "/usr/bin/perl")
+  (literal "/usr/bin/plutil")
+  (literal "/usr/bin/readlink")
+  (literal "/usr/bin/shasum")
+  (literal "/usr/bin/uname")
+  (literal "/usr/libexec/PlistBuddy"))
+
+(allow sysctl-read)
+(allow file-read-metadata)
+(allow file-map-executable
+  (literal "/bin/chmod")
+  (literal "/bin/cp")
+  (literal "/bin/mkdir")
+  (literal "/bin/rm")
+  (literal "/bin/zsh")
+  (subpath "/usr/bin")
+  (subpath "/usr/lib")
+  (subpath "/usr/libexec")
+  (subpath "/usr/share")
+  (subpath "/System"))
+
+(allow file-read-data
+  (literal "/")
+  (literal "/bin/chmod")
+  (literal "/bin/cp")
+  (literal "/bin/mkdir")
+  (literal "/bin/rm")
+  (literal "/bin/zsh")
+  (subpath "/usr/bin")
+  (subpath "/usr/lib")
+  (subpath "/usr/libexec")
+  (subpath "/usr/share")
+  (subpath "/System")
+  (subpath "/Library/Keychains")
+  (subpath "/Library/Preferences")
+  (literal "/dev/null")
+  (literal "/dev/random")
+  (literal "/dev/urandom")
+  (literal (param "ROOT") "/build-sandboxed-obsidian.zsh")
+  (literal (param "ROOT") "/pins.conf")
+  (literal (param "ROOT") "/entitlements/parent.entitlements")
+  (literal (param "ROOT") "/entitlements/child.entitlements")
+  (subpath (param "ROOT") "/artifacts/build/tmp")
+  (subpath (param "ROOT") "/artifacts/build/entitlements")
+  (subpath (param "ROOT") "/artifacts/build/source")
+  (subpath (param "ROOT") "/artifacts/out")
+  (subpath (param "HOME") "/Library/Keychains")
+  (subpath (param "HOME") "/Library/Preferences"))
+
+(allow file-read-xattr
+  (subpath (param "ROOT") "/artifacts/out"))
+
+(allow file-write*
+  (subpath (param "ROOT") "/artifacts/build/tmp")
+  (subpath (param "ROOT") "/artifacts/build/entitlements")
+  (subpath (param "ROOT") "/artifacts/out")
+  (subpath (param "HOME") "/Library/Keychains")
+  (literal "/dev/null"))
+
+(allow mach-lookup
+  (global-name "com.apple.securityd")
+  (global-name "com.apple.securityd.xpc")
+  (global-name "com.apple.SecurityServer")
+  (global-name "com.apple.trustd")
+  (global-name "com.apple.trustd.agent"))
+
+(if (string=? (param "SIGN_TIMESTAMP") "1")
+  (allow network-outbound
+    (literal "/private/var/run/mDNSResponder")
+    (remote tcp "*:443")))
+
+(if (string=? (param "SIGN_TIMESTAMP") "1")
+  (allow mach-lookup
+    (global-name "com.apple.security.XPCTimeStampingService")))
