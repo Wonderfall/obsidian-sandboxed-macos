@@ -1,0 +1,32 @@
+# Files included in release source archives.
+# Format: <mode> <relative-path>
+
+0644 .gitignore
+0644 AGENTS.md
+0644 LICENSE
+0644 README.md
+0644 SECURITY.md
+0644 VERSION
+0755 build-sandboxed-obsidian.zsh
+0644 docs/assets/readme-banner.jpg
+0644 docs/release-manifest-v1.md
+0644 docs/update-threat-model.md
+0644 entitlements/child.entitlements
+0644 entitlements/parent.entitlements
+0644 pins.conf
+0644 sandbox/fetch.sb
+0644 sandbox/release-sign.sb
+0644 sandbox/release-verify.sb
+0644 sandbox/sign-ad-hoc.sb
+0644 sandbox/sign-identity.sb
+0644 sandbox/stage.sb
+0644 sandbox/unpack-verify.sb
+0644 sandbox/verify.sb
+0644 tools/release-config.zsh
+0644 tools/release.conf
+0755 tools/sign-release.zsh
+0644 tools/source-archive-files.txt
+0755 tools/verify-release.zsh
+0644 trust/allowed_signers
+0644 trust/release_signing_key.pub
+0644 trust/revoked_signers

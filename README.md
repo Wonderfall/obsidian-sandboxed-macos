@@ -88,13 +88,14 @@ also hardened in many ways, with extra guarantees that it can run on a vanilla m
 environment with no dependencies installed, and that it won't interfere with your system
 (ironically by using a sandbox of its own, using Seatbelt profiles) in any case.
 
-The update process can be delicate. While the sandboxed build should be support ASAR updates (Obsidian
+The update process can be delicate. While the sandboxed build should support ASAR updates (Obsidian
 itself), it does not support updating Electron (nor does the original Obsidian for some reason,
 but unsandboxed Electron apps can totally do that). The ideal workflow would be to distribute
 updates through MAS, which is of course not possible; sharing resigned builds is less than ideal,
 involves additional parties to trust arbitrarily, and would probably break ToS.
 
-*(At the moment update process is WIP)*
+For project source updates, use the signed release assets described below rather
+than GitHub's auto-generated source archives.
 
 
 ## Build
@@ -120,6 +121,46 @@ To remove build artifacts and downloaded caches:
 ```
 
 This removes `artifacts/`.
+
+## Install and update from signed releases
+
+Use the project-owned release assets from GitHub Releases, not GitHub's
+auto-generated "Source code" archives. For version `$version`, download:
+
+```text
+obsidian-sandboxed-macos-$version-manifest.txt
+obsidian-sandboxed-macos-$version-manifest.txt.sig
+obsidian-sandboxed-macos-$version.tar.gz
+```
+
+Put the three files in one directory, then verify them from an existing trusted
+checkout:
+
+```sh
+./tools/verify-release.zsh /path/to/release-directory
+```
+
+After verification succeeds, extract the archive and build from the extracted
+source tree.
+
+For a first install, the release key is a trust-on-first-use decision. Mitigate
+that by checking the release signing key fingerprint before relying on it:
+
+```sh
+ssh-keygen -l -E sha256 -f trust/release_signing_key.pub
+```
+
+Expected fingerprint:
+
+```text
+SHA256:SpvTWBpxkzomnK4fsymKTeyU1d5s6FjOcASZN189p2E
+```
+
+Compare that fingerprint through an independent path if possible, such as a
+previously saved copy, a maintainer-controlled channel, or another trusted
+machine/network. After the first trusted install, verify future updates with the
+currently trusted checkout before extracting or replacing anything, and only
+accept versions greater than the version you already trust.
 
 ## Usage
 
