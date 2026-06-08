@@ -215,6 +215,15 @@ sha256_file() {
   print -r -- "${line%% *}"
 }
 
+mtree_escape_value() {
+  local value="$1"
+
+  value="${value//\\/\\134}"
+  value="${value//$'\t'/\\011}"
+  value="${value// /\\040}"
+  print -r -- "$value"
+}
+
 public_key_for_private_key() {
   local private_key="$1"
   local public_key="$2"
@@ -299,7 +308,7 @@ prepare_release_files() {
 write_mtree_spec() {
   local mtree_file="$1"
   local archive_root="$2"
-  local path dir parent file content_path mode
+  local path dir parent file content_path escaped_content_path mode
   typeset -A dirs
 
   dirs[$archive_root]=1
@@ -321,7 +330,8 @@ write_mtree_spec() {
     for file in "${release_file_paths[@]}"; do
       mode="${release_file_modes[$file]}"
       content_path="$temp_content_dir/$file"
-      print -r -- "./$archive_root/$file type=file uid=0 gid=0 uname=root gname=wheel mode=$mode time=$fixed_archive_time content=$content_path"
+      escaped_content_path="$(mtree_escape_value "$content_path")"
+      print -r -- "./$archive_root/$file type=file uid=0 gid=0 uname=root gname=wheel mode=$mode time=$fixed_archive_time content=$escaped_content_path"
     done
   } > "$mtree_file"
 
