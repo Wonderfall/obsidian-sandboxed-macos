@@ -85,6 +85,9 @@
   (subpath (param "ROOT") "/artifacts/releases")
   (subpath (param "ROOT") "/artifacts/release-tmp"))
 
+(allow file-ioctl
+  (literal "/dev/tty"))
+
 (allow mach-lookup
   (global-name "com.apple.system.opendirectoryd.api")
   (global-name "com.apple.system.opendirectoryd.libinfo")
