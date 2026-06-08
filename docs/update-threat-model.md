@@ -15,7 +15,7 @@ in the local `trust/` directory. The updater must:
 
 1. Verify `obsidian-sandboxed-macos-$version-manifest.txt.sig` with the local
    trusted `allowed_signers` and `revoked_signers`, signer identity
-   `release@obsidian-sandboxed-macos`, and namespace
+   `release@wonderfall.dev`, and namespace
    `obsidian-sandboxed-macos.release@wonderfall.dev`.
 2. Parse `obsidian-sandboxed-macos-$version-manifest.txt` as strict key/value
    data with fixed field order.

@@ -61,5 +61,5 @@ obsidian-sandboxed-macos.release@wonderfall.dev
 The release signer identity is:
 
 ```text
-release@obsidian-sandboxed-macos
+release@wonderfall.dev
 ```
