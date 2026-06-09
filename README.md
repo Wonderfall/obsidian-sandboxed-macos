@@ -224,7 +224,8 @@ identity, you may see an attempt to access `obsidian Safe Storage` in Keychain. 
 this would not happen if we were able to change the ASAR's `package.json`, but since it's out
 of scope for the project, the app will attempt to use and share the same Keychain Safe Storage.
 You can choose Always Allow, or Deny, depending on your use of the Keychain features in Obsidian.
-Deny shouldn't break other features.
+Deny shouldn't break other unrelated features. Alternatively, you can remove `obsidian Safe Storage`
+in Keychain Access before reinstalling Obsidian with another identity.
 
 Generally, Obsidian Sandboxed does not share the same storage and preferences
 as the original Obsidian app. As with any sandboxed app, app data mostly lives in
