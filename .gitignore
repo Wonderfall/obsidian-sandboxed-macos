@@ -3,5 +3,4 @@
 
 # Generated build artifacts, downloads, and outputs
 /artifacts/
-.build-sandboxed-obsidian.lock/
-.release-sandboxed-obsidian.lock/
+/*.lock/

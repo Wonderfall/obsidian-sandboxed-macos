@@ -170,8 +170,21 @@ accept versions greater than the version you already trust.
 
 ### Update from an existing release
 
-Put the three files in one directory, then verify them from an existing trusted
-checkout:
+You can have the existing trusted checkout fetch and verify a newer release
+without extracting it or replacing anything:
+
+```sh
+./tools/fetch-latest-release.zsh
+```
+
+The fetcher uses GitHub release metadata only to discover candidate asset URLs.
+The trusted decision still comes from the signed manifest, the local trust files,
+the archive hash, and local downgrade protection. Verified release assets are
+written under `artifacts/updates/$version/`; feel free to extract them to whatever
+location you prefer (e.g. the parent folder of the current release).
+
+If you downloaded the three release files yourself, put them in one directory,
+then verify them from an existing trusted checkout:
 
 ```sh
 ./tools/verify-release.zsh /path/to/release-directory

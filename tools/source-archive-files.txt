@@ -14,6 +14,7 @@
 0644 entitlements/child.entitlements
 0644 entitlements/parent.entitlements
 0644 pins.conf
+0644 sandbox/release-fetch.sb
 0644 sandbox/fetch.sb
 0644 sandbox/release-sign.sb
 0644 sandbox/release-verify.sb
@@ -22,6 +23,7 @@
 0644 sandbox/stage.sb
 0644 sandbox/unpack-verify.sb
 0644 sandbox/verify.sb
+0755 tools/fetch-latest-release.zsh
 0644 tools/release-config.zsh
 0644 tools/release.conf
 0755 tools/sign-release.zsh
