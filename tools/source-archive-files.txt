@@ -14,8 +14,8 @@
 0644 entitlements/child.entitlements
 0644 entitlements/parent.entitlements
 0644 pins.conf
-0644 sandbox/release-fetch.sb
 0644 sandbox/fetch.sb
+0644 sandbox/release-fetch.sb
 0644 sandbox/release-sign.sb
 0644 sandbox/release-verify.sb
 0644 sandbox/sign-ad-hoc.sb

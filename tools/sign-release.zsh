@@ -592,24 +592,24 @@ run_sandboxed_sign() {
   /bin/chmod 600 "$token_file"
 
   set +e
-  /usr/bin/sandbox-exec \
-    -f "$profile" \
-    -D ROOT="$root" \
-    -D TMP="$release_tmp_parent" \
-    -D HOME="$sandbox_home" \
-    -D SIGNING_KEY="$signing_key" \
-    -D SIGNING_KEY_PUB="$signing_key_pub" \
-    /usr/bin/env -i \
-      HOME="$sandbox_home" \
-      TMPDIR="$release_tmp_parent" \
-      PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-      LC_ALL=C \
-      SOURCE_COMMIT="$source_commit" \
-      RELEASE_SIGNING_KEY="$signing_key" \
-      NEXT_SIGNING_KEY_FINGERPRINT="$next_signing_key_fingerprint" \
-      OBSIDIAN_RELEASE_INTERNAL="sign" \
-      OBSIDIAN_RELEASE_TOKEN="$token" \
-      OBSIDIAN_RELEASE_TOKEN_FILE="$token_file" \
+  /usr/bin/env -i \
+    HOME="$sandbox_home" \
+    TMPDIR="$release_tmp_parent" \
+    PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+    LC_ALL=C \
+    SOURCE_COMMIT="$source_commit" \
+    RELEASE_SIGNING_KEY="$signing_key" \
+    NEXT_SIGNING_KEY_FINGERPRINT="$next_signing_key_fingerprint" \
+    OBSIDIAN_RELEASE_INTERNAL="sign" \
+    OBSIDIAN_RELEASE_TOKEN="$token" \
+    OBSIDIAN_RELEASE_TOKEN_FILE="$token_file" \
+    /usr/bin/sandbox-exec \
+      -f "$profile" \
+      -D ROOT="$root" \
+      -D TMP="$release_tmp_parent" \
+      -D HOME="$sandbox_home" \
+      -D SIGNING_KEY="$signing_key" \
+      -D SIGNING_KEY_PUB="$signing_key_pub" \
       /bin/zsh "$script_path" --internal-sandbox
   rc="$?"
   set -e
