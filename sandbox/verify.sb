@@ -20,8 +20,7 @@
   (literal "/usr/bin/readlink")
   (literal "/usr/bin/shasum")
   (literal "/usr/bin/uname")
-  (literal "/usr/libexec/PlistBuddy")
-  (literal "/usr/sbin/spctl"))
+  (literal "/usr/libexec/PlistBuddy"))
 
 (allow sysctl-read)
 (allow file-read-metadata)
@@ -33,7 +32,6 @@
   (subpath "/usr/bin")
   (subpath "/usr/lib")
   (subpath "/usr/libexec")
-  (subpath "/usr/sbin")
   (subpath "/usr/share")
   (subpath "/System"))
 
@@ -46,7 +44,6 @@
   (subpath "/usr/bin")
   (subpath "/usr/lib")
   (subpath "/usr/libexec")
-  (subpath "/usr/sbin")
   (subpath "/usr/share")
   (subpath "/System")
   (subpath "/Library/Keychains")

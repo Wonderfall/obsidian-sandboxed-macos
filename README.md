@@ -370,8 +370,8 @@ The script (non-exhaustively):
   set before signing;
 - sets `umask 077`, keeps private build directories at mode `700`, and keeps
   generated entitlements and downloaded pinned artifacts at mode `600`;
-- verifies the final app signature, compares signed parent/helper entitlements
-  against the generated entitlement files, and prints final signature metadata.
+- verifies the final app signature and compares signed parent/helper
+  entitlements against the generated entitlement files.
 
 Everything should be auditable/readable either by humans or AI agents. As a
 consequence of some hardening measures, the script has grown quite a bit longer

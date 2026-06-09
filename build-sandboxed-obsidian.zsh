@@ -3,6 +3,7 @@ set -euo pipefail
 umask 077
 PATH="/usr/bin:/bin:/usr/sbin:/sbin"
 export PATH
+export LC_ALL=C
 
 script_path="${0:A}"
 root="${script_path:h}"
@@ -11,17 +12,85 @@ build_lock_dir="$root/.build-sandboxed-obsidian.lock"
 build_lock_acquired=0
 phase_token_dir=""
 
+log() {
+  print -r -- "$*"
+}
+
+log_blank() {
+  print -r -- ""
+}
+
+log_detail() {
+  print -r -- "  - $*"
+}
+
+log_kv() {
+  local key="$1"
+  shift
+
+  print -r -- "  $key: $*"
+}
+
+log_done() {
+  print -r -- "  [ok] $*"
+}
+
+display_path() {
+  local path="$1"
+
+  case "$path" in
+    "$root"/*) print -r -- "${path#$root/}" ;;
+    *) print -r -- "$path" ;;
+  esac
+}
+
+print_indented() {
+  local line
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    print -r -- "    $line"
+  done
+}
+
+print_indented_err() {
+  local line
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    print -r -- "    $line" >&2
+  done
+}
+
+run_or_report() {
+  local label="$1"
+  shift
+  local output rc
+
+  if output="$("$@" 2>&1)"; then
+    return 0
+  fi
+
+  rc="$?"
+  print -r -- "error: $label failed (exit $rc)" >&2
+  if [[ -n "$output" ]]; then
+    print -r -- "$output" | print_indented_err
+  fi
+  return "$rc"
+}
+
 die() {
-  echo "error: $*" >&2
+  print -r -- "error: $*" >&2
+  if [[ -n "${OBSIDIAN_INTERNAL_PHASE:-}" ]]; then
+    print -r -- "  phase: $OBSIDIAN_INTERNAL_PHASE" >&2
+  fi
   exit 1
 }
 
 warn() {
-  echo "warning: $*" >&2
+  print -r -- "warning: $*" >&2
 }
 
 usage() {
-  echo "usage: ${script_path:t} [clean]" >&2
+  print -r -- "usage: ${script_path:t} [clean]" >&2
 }
 
 cleanup_on_exit() {
@@ -84,6 +153,42 @@ valid_phase() {
   esac
 }
 
+phase_label() {
+  case "$1" in
+    fetch) print -r -- "Fetch pinned downloads" ;;
+    unpack-verify) print -r -- "Unpack and verify upstream apps" ;;
+    stage) print -r -- "Stage sandboxed app bundle" ;;
+    sign) print -r -- "Sign staged app" ;;
+    verify) print -r -- "Verify final app" ;;
+    *) print -r -- "$1" ;;
+  esac
+}
+
+signing_label() {
+  if [[ "$sign_identity" == "-" ]]; then
+    print -r -- "ad hoc"
+  else
+    print -r -- "$sign_identity"
+  fi
+}
+
+timestamp_label() {
+  if [[ "$timestamp_enabled" == "1" ]]; then
+    print -r -- "enabled"
+  else
+    print -r -- "disabled"
+  fi
+}
+
+log_build_plan() {
+  log "Building sandboxed Obsidian"
+  log_kv "Obsidian" "$obsidian_version ($obsidian_asset)"
+  log_kv "Electron" "$electron_version ($electron_asset)"
+  log_kv "Output" "$(display_path "$stage_app")"
+  log_kv "Bundle id" "$output_bundle_id"
+  log_kv "Signing" "$(signing_label), timestamp $(timestamp_label)"
+}
+
 clean_path() {
   local path="$1"
 
@@ -112,7 +217,7 @@ run_clean() {
   detach_mountpoint_if_mounted "$mountpoint"
 
   clean_path "$artifact_dir"
-  echo "removed artifacts"
+  log_done "Removed $(display_path "$artifact_dir")"
 }
 
 pins_file="$root/pins.conf"
@@ -367,8 +472,8 @@ verify_sha256() {
 
   actual="$(shasum -a 256 "$file" | awk '{print $1}')"
   [[ "$actual" == "$expected" ]] || die "SHA-256 mismatch for $file
-expected: $expected
-actual:   $actual"
+  expected: $expected
+  actual:   $actual"
 }
 
 require_github_tls_pin_support() {
@@ -452,17 +557,17 @@ verify_github_tls_pins() {
 
   effective_url="$(awk '/^URL_EFFECTIVE=/ { sub(/^URL_EFFECTIVE=/, ""); print; exit }' "$tls_info")"
   [[ -n "$effective_url" ]] || {
-    echo "error: missing curl effective URL for TLS pin check" >&2
+    print -r -- "error: missing curl effective URL for TLS pin check" >&2
     return 1
   }
 
   host="$(url_host "$effective_url")" || {
-    echo "error: invalid HTTPS URL for TLS pin check: $effective_url" >&2
+    print -r -- "error: invalid HTTPS URL for TLS pin check: $effective_url" >&2
     return 1
   }
 
   expected="$(github_tls_pins_for_host "$host")" || {
-    echo "error: unexpected GitHub download host: $host" >&2
+    print -r -- "error: unexpected GitHub download host: $host" >&2
     return 1
   }
 
@@ -498,12 +603,12 @@ verify_github_tls_pins() {
   rm -rf "$cert_dir"
 
   [[ "$count" -gt 0 ]] || {
-    echo "error: missing certificate chain for TLS pin check: $host" >&2
+    print -r -- "error: missing certificate chain for TLS pin check: $host" >&2
     return 1
   }
 
   [[ "$matched" == "1" ]] || {
-    echo "error: GitHub TLS intermediate pin mismatch for $host" >&2
+    print -r -- "error: GitHub TLS intermediate pin mismatch for $host" >&2
     return 1
   }
 }
@@ -516,6 +621,8 @@ check_github_tls_url() {
 
   if ! curl \
     --disable \
+    --silent \
+    --show-error \
     --fail \
     --head \
 	    --proto '=https' \
@@ -545,9 +652,15 @@ download_file() {
   local out="$2"
   local tmp
   local tls_info
+  typeset -a curl_output_args
 
   tmp="$(make_temp_file "${out:t}.download")"
   tls_info="$(make_temp_file "${out:t}.tls")"
+  if [[ -t 2 ]]; then
+    curl_output_args=(--progress-bar)
+  else
+    curl_output_args=(--silent --show-error)
+  fi
 
   if ! check_github_tls_url "$url"; then
     rm -f "$tmp" "$tls_info"
@@ -556,6 +669,7 @@ download_file() {
 
   if ! curl \
     --disable \
+    "${curl_output_args[@]}" \
     --fail \
     --location \
 	    --proto '=https' \
@@ -603,22 +717,25 @@ verify_upstream_obsidian() {
   [[ "$version" == "$obsidian_version" ]] ||
     die "pinned Obsidian version $obsidian_version does not match bundle CFBundleShortVersionString $version"
 
-  codesign \
+  run_or_report "upstream Obsidian signature verification" \
+    codesign \
     --verify \
     --deep \
     --strict \
     --verbose=2 \
     --test-requirement "$obsidian_requirement" \
-    "$app" >/dev/null
+    "$app"
 
-  spctl --assess --type execute --verbose=4 "$app" >/dev/null
+  run_or_report "upstream Obsidian Gatekeeper assessment" \
+    spctl --assess --type execute --verbose=4 "$app"
 }
 
 codesign_item() {
   local item="$1"
   shift
 
-  codesign \
+  run_or_report "signing $(display_path "$item")" \
+    codesign \
     --force \
     --sign "$sign_identity" \
     "${codesign_timestamp_args[@]}" \
@@ -660,13 +777,17 @@ fetch_electron() {
   mkdir -p "$cache_dir"
 
   if [[ ! -f "$electron_zip" ]]; then
-    echo "Downloading $electron_asset"
+    log_detail "Downloading Electron archive: ${electron_asset}.zip"
     download_file "$electron_url" "$electron_zip"
+  else
+    log_detail "Using cached Electron archive: $(display_path "$electron_zip")"
   fi
 
   if [[ ! -f "$electron_shasums" ]]; then
-    echo "Downloading Electron SHASUMS256.txt"
+    log_detail "Downloading Electron checksum manifest: SHASUMS256.txt"
     download_file "$electron_shasums_url" "$electron_shasums"
+  else
+    log_detail "Using cached Electron checksum manifest: $(display_path "$electron_shasums")"
   fi
 
   verify_electron_downloads
@@ -674,6 +795,7 @@ fetch_electron() {
 
 unpack_verify_electron() {
   verify_electron_downloads
+  log_detail "Unpacking Electron archive"
   rm -rf "$electron_dir"
   mkdir -p "$electron_dir"
   ditto -x -k "$electron_zip" "$electron_dir"
@@ -684,17 +806,17 @@ verify_electron_downloads() {
   [[ -f "$electron_shasums" ]] || die "missing cached Electron SHASUMS256.txt: $electron_shasums"
   [[ -f "$electron_zip" ]] || die "missing cached Electron ZIP: $electron_zip"
 
-  echo "Verifying Electron SHASUMS256.txt"
+  log_detail "Verifying Electron checksum manifest"
   verify_sha256 "$electron_shasums" "$electron_shasums_sha256"
   chmod 600 "$electron_shasums"
 
   local manifest_zip_sha256
   manifest_zip_sha256="$(expected_zip_sha256_from_manifest)" || die "missing ${electron_asset}.zip in $electron_shasums"
   [[ "$manifest_zip_sha256" == "$electron_zip_sha256" ]] || die "pinned ZIP hash does not match Electron SHASUMS256.txt
-pinned:   $electron_zip_sha256
-manifest: $manifest_zip_sha256"
+  pinned:   $electron_zip_sha256
+  manifest: $manifest_zip_sha256"
 
-  echo "Verifying $electron_asset"
+  log_detail "Verifying Electron archive hash"
   verify_sha256 "$electron_zip" "$manifest_zip_sha256"
   chmod 600 "$electron_zip"
 }
@@ -703,8 +825,10 @@ fetch_obsidian() {
   mkdir -p "$cache_dir"
 
   if [[ ! -f "$obsidian_dmg" ]]; then
-    echo "Downloading $obsidian_asset"
+    log_detail "Downloading Obsidian DMG: $obsidian_asset"
     download_file "$obsidian_url" "$obsidian_dmg"
+  else
+    log_detail "Using cached Obsidian DMG: $(display_path "$obsidian_dmg")"
   fi
 
   verify_obsidian_download
@@ -712,7 +836,7 @@ fetch_obsidian() {
 
 verify_obsidian_download() {
   [[ -f "$obsidian_dmg" ]] || die "missing cached Obsidian DMG: $obsidian_dmg"
-  echo "Verifying $obsidian_asset"
+  log_detail "Verifying Obsidian DMG hash"
   verify_sha256 "$obsidian_dmg" "$obsidian_sha256"
   chmod 600 "$obsidian_dmg"
 }
@@ -724,6 +848,7 @@ unpack_verify_obsidian() {
   mkdir -p "$build_dir/source" "$mountpoint"
   trap cleanup_mount EXIT
 
+  log_detail "Mounting Obsidian DMG"
   hdiutil attach \
     -nobrowse \
     -readonly \
@@ -735,12 +860,13 @@ unpack_verify_obsidian() {
   mounted_app="$(find "$mountpoint" -maxdepth 2 -name "Obsidian.app" -type d -print -quit)"
   [[ -n "$mounted_app" ]] || die "could not find Obsidian.app in $obsidian_asset"
 
+  log_detail "Copying upstream Obsidian.app"
   ditto "$mounted_app" "$source_app"
   cleanup_mount
   trap - EXIT
   rmdir "$mountpoint" 2>/dev/null || true
 
-  echo "Verifying upstream Obsidian signature"
+  log_detail "Verifying upstream Obsidian signature and Gatekeeper assessment"
   verify_upstream_obsidian "$source_app"
 }
 
@@ -813,8 +939,8 @@ expect_plist_string() {
 
   actual="$(plist_get "$plist" "$key")"
   [[ "$actual" == "$expected" ]] || die "unexpected $key in $plist
-expected: $expected
-actual:   $actual"
+  expected: $expected
+  actual:   $actual"
 }
 
 validate_stage_symlinks() {
@@ -915,7 +1041,7 @@ remove_unknown_standalone_executables() {
     is_standalone_macho_executable "$item" || continue
     rel="${item#$stage_app/}"
     if ! is_known_standalone_executable "$rel"; then
-      echo "Removing unexpected executable: $rel"
+      log_detail "Removing unexpected executable: $rel"
       rm -f "$item"
     fi
   done < <(find "$stage_app/Contents" -type f -print0)
@@ -1055,8 +1181,8 @@ verify_staged_resources_match_source() {
     [[ -n "$actual_hash" ]] ||
       die "missing staged resource file: Contents/Resources/$rel"
     [[ "$actual_hash" == "$expected_hash" ]] || die "staged resource hash mismatch: Contents/Resources/$rel
-expected: $expected_hash
-actual:   $actual_hash"
+  expected: $expected_hash
+  actual:   $actual_hash"
   done
   for rel in "${(@k)actual_resource_files}"; do
     [[ -n "${expected_resource_files[$rel]-}" ]] ||
@@ -1094,7 +1220,7 @@ stage_app_bundle() {
 
   source_electron_info="$source_app/Contents/Frameworks/Electron Framework.framework/Resources/Info.plist"
   source_electron_version="$(plist_get "$source_electron_info" CFBundleVersion)"
-  echo "Source Obsidian uses Electron $source_electron_version; replacing runtime with sandbox-compatible Electron $electron_version"
+  log_detail "Replacing upstream Electron $source_electron_version with sandbox-compatible Electron $electron_version"
 
   electron_info="$electron_app/Contents/Frameworks/Electron Framework.framework/Resources/Info.plist"
   downloaded_electron_version="$(plist_get "$electron_info" CFBundleVersion)"
@@ -1107,9 +1233,11 @@ stage_app_bundle() {
 
   rm -rf "$stage_app"
   mkdir -p "$out_dir"
+  log_detail "Copying verified Obsidian resources"
   ditto "$source_app" "$stage_app"
   xattr -cr "$stage_app"
 
+  log_detail "Replacing app executable and framework"
   rm -f "$stage_app/Contents/MacOS/$bundle_executable"
   ditto "$electron_app/Contents/MacOS/Electron" "$stage_app/Contents/MacOS/$bundle_executable"
   chmod 755 "$stage_app/Contents/MacOS/$bundle_executable"
@@ -1118,6 +1246,7 @@ stage_app_bundle() {
   ditto "$electron_app/Contents/Frameworks/Electron Framework.framework" \
     "$stage_app/Contents/Frameworks/Electron Framework.framework"
 
+  log_detail "Replacing helper apps"
   replace_helper ""
   replace_helper " (Renderer)"
   replace_helper " (Plugin)"
@@ -1125,10 +1254,12 @@ stage_app_bundle() {
   remove_unknown_standalone_executables
   normalize_resource_execute_bits
 
+  log_detail "Writing output bundle metadata"
   plist_set_string "$stage_app/Contents/Info.plist" CFBundleIdentifier "$output_bundle_id"
   plist_set_string "$stage_app/Contents/Info.plist" CFBundleName "$output_bundle_name"
   plist_set_string "$stage_app/Contents/Info.plist" CFBundleDisplayName "$output_app_name"
   plist_set_string "$stage_app/Contents/Info.plist" ElectronTeamID "$team_id"
+  log_detail "Validating staged app inventory"
   validate_stage_tree
 }
 
@@ -1218,8 +1349,10 @@ verify_entitlements_match() {
   expected_binary="$(make_temp_file "${label}.expected")"
   actual_binary="$(make_temp_file "${label}.actual")"
 
-  codesign --verify --strict "$item"
-  codesign -d --entitlements :- "$item" 2>/dev/null > "$actual"
+  run_or_report "code signature verification for $item" \
+    codesign --verify --strict "$item"
+  codesign -d --entitlements :- "$item" 2>/dev/null > "$actual" ||
+    die "failed to read signed entitlements for $item"
 
   plutil -lint "$expected" >/dev/null
   plutil -lint "$actual" >/dev/null
@@ -1229,7 +1362,10 @@ verify_entitlements_match() {
 
   rm -f "$actual" "$expected_binary" "$actual_binary"
 
-  [[ "$actual_hash" == "$expected_hash" ]] || die "entitlements mismatch for $item"
+  [[ "$actual_hash" == "$expected_hash" ]] || die "entitlements mismatch for $item
+  expected: $expected
+  expected hash: $expected_hash
+  actual hash:   $actual_hash"
 }
 
 verify_signed_entitlements() {
@@ -1252,22 +1388,14 @@ verify_signed_entitlements() {
 verify_final_app() {
   local app="$1"
 
-  codesign --verify --deep --strict --verbose=4 "$app"
+  log_detail "Verifying final code signature"
+  run_or_report "final code signature verification" \
+    codesign --verify --deep --strict --verbose=4 "$app"
+  log_done "Final code signature is valid"
 
-  echo "Final signature:"
-  codesign -dvvv "$app" 2>&1
-
-  echo "Final entitlements:"
-  codesign -d --entitlements :- "$app" 2>/dev/null || true
-
-  echo "Verifying signed entitlements:"
+  log_detail "Comparing signed entitlements with generated entitlements"
   verify_signed_entitlements "$app"
-  echo "Signed entitlements match generated entitlements."
-
-  echo "Gatekeeper assessment:"
-  if ! spctl --assess --type execute --verbose=4 "$app"; then
-    echo "Gatekeeper did not accept the final app; this is expected for ad hoc, self-signed, or unnotarized Developer ID builds." >&2
-  fi
+  log_done "Signed entitlements match generated entitlements"
 }
 
 require_safe_existing_dir() {
@@ -1357,7 +1485,7 @@ require_phase_commands() {
       require_plistbuddy
       ;;
     verify)
-      commands=(zsh shasum awk codesign spctl file find plutil readlink rm mkdir chmod mktemp uname)
+      commands=(zsh shasum awk codesign file find plutil readlink rm mkdir chmod mktemp uname)
       require_plistbuddy
       ;;
     *)
@@ -1426,23 +1554,12 @@ run_internal_phase() {
       validate_stage_tree
       verify_staged_resources_match_source
       write_entitlements "$output_bundle_id"
-      echo "Signing $stage_app"
-      if [[ "$sign_identity" == "-" ]]; then
-        echo "Signing identity: ad hoc"
-      else
-        echo "Signing identity: $sign_identity"
-      fi
-      if [[ "$timestamp_enabled" == "1" ]]; then
-        echo "Signing timestamp: enabled"
-      else
-        echo "Signing timestamp: disabled"
-      fi
+      log_detail "Signing staged app"
       sign_app "$stage_app"
       ;;
     verify)
       validate_stage_tree
       verify_final_app "$stage_app"
-      echo "$stage_app"
       ;;
   esac
 }
@@ -1476,7 +1593,10 @@ sandbox_profile_for() {
 
 run_phase() {
   local phase="$1"
+  local phase_index="$2"
+  local phase_total="$3"
   local profile phase_home phase_tmp token token_file
+  local rc
 
   profile="$(sandbox_profile_for "$phase")"
   phase_home="$(phase_home_for "$phase")"
@@ -1495,32 +1615,40 @@ run_phase() {
   /bin/chmod 600 "$token_file"
 
   verify_static_policy_inputs_unchanged
-  echo "==> $phase"
-  /usr/bin/sandbox-exec \
-    -f "$profile" \
-    -D ROOT="$root" \
-    -D TMP="$phase_tmp" \
-    -D HOME="$phase_home" \
-    -D SIGN_TIMESTAMP="$timestamp_enabled" \
-    /usr/bin/env -i \
-      HOME="$phase_home" \
-      TMPDIR="$phase_tmp" \
-      PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-      OBSIDIAN_INTERNAL_PHASE="$phase" \
-      OBSIDIAN_PINS_CONF_SHA256="$pins_conf_sha256" \
-      OBSIDIAN_PHASE_TOKEN="$token" \
-      OBSIDIAN_PHASE_TOKEN_FILE="$token_file" \
-      OBSIDIAN_PHASE_TMP="$phase_tmp" \
-      OBSIDIAN_APP_GROUP_TEAM_ID="${OBSIDIAN_APP_GROUP_TEAM_ID:-}" \
-      OBSIDIAN_OUTPUT_APP_NAME="${OBSIDIAN_OUTPUT_APP_NAME:-}" \
-      OBSIDIAN_OUTPUT_BUNDLE_NAME="${OBSIDIAN_OUTPUT_BUNDLE_NAME:-}" \
-      OBSIDIAN_OUTPUT_BUNDLE_ID="${OBSIDIAN_OUTPUT_BUNDLE_ID:-}" \
-      SIGN_IDENTITY="${SIGN_IDENTITY:-}" \
-      SIGN_TIMESTAMP="${SIGN_TIMESTAMP:-}" \
-      /bin/zsh "$script_path" --internal-phase "$phase"
+  log_blank
+  log "[$phase_index/$phase_total] $(phase_label "$phase")"
+  if /usr/bin/sandbox-exec \
+      -f "$profile" \
+      -D ROOT="$root" \
+      -D TMP="$phase_tmp" \
+      -D HOME="$phase_home" \
+      -D SIGN_TIMESTAMP="$timestamp_enabled" \
+      /usr/bin/env -i \
+        HOME="$phase_home" \
+        TMPDIR="$phase_tmp" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        OBSIDIAN_INTERNAL_PHASE="$phase" \
+        OBSIDIAN_PINS_CONF_SHA256="$pins_conf_sha256" \
+        OBSIDIAN_PHASE_TOKEN="$token" \
+        OBSIDIAN_PHASE_TOKEN_FILE="$token_file" \
+        OBSIDIAN_PHASE_TMP="$phase_tmp" \
+        OBSIDIAN_APP_GROUP_TEAM_ID="${OBSIDIAN_APP_GROUP_TEAM_ID:-}" \
+        OBSIDIAN_OUTPUT_APP_NAME="${OBSIDIAN_OUTPUT_APP_NAME:-}" \
+        OBSIDIAN_OUTPUT_BUNDLE_NAME="${OBSIDIAN_OUTPUT_BUNDLE_NAME:-}" \
+        OBSIDIAN_OUTPUT_BUNDLE_ID="${OBSIDIAN_OUTPUT_BUNDLE_ID:-}" \
+        SIGN_IDENTITY="${SIGN_IDENTITY:-}" \
+        SIGN_TIMESTAMP="${SIGN_TIMESTAMP:-}" \
+        /bin/zsh "$script_path" --internal-phase "$phase"; then
+    log_done "$(phase_label "$phase")"
+  else
+    rc="$?"
+    print -r -- "error: phase failed: $(phase_label "$phase") (exit $rc)" >&2
+    return "$rc"
+  fi
 }
 
 run_parent_build() {
+  local phase phase_index phase_total
   typeset -a phases
 
   [[ -x /usr/bin/sandbox-exec ]] || die "missing required command: /usr/bin/sandbox-exec"
@@ -1533,9 +1661,17 @@ run_parent_build() {
   require_safe_existing_dir "$phase_token_dir" "phase token directory"
 
   phases=(fetch unpack-verify stage sign verify)
+  log_build_plan
+  phase_index=0
+  phase_total="${#phases[@]}"
   for phase in "${phases[@]}"; do
-    run_phase "$phase"
+    phase_index=$((phase_index + 1))
+    run_phase "$phase" "$phase_index" "$phase_total"
   done
+
+  log_blank
+  log "Build complete"
+  log_kv "App" "$stage_app"
 }
 
 if [[ "$command" == "clean" ]]; then
