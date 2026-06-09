@@ -136,14 +136,28 @@ fingerprint_for_public_key() {
 fingerprint_for_allowed_signers() {
   local allowed_signers="$1"
   local tmp_public_key="$2"
-  local principal options key_type key_blob extra
+  local line line_count=0
+  local -a fields
+  local principal options key_type key_blob
 
-  read -r principal options key_type key_blob extra < "$allowed_signers"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    line_count=$((line_count + 1))
+    [[ "$line_count" -eq 1 ]] || die "allowed_signers must contain exactly one signer"
+    [[ -n "$line" ]] || die "allowed_signers is empty"
+    fields=("${(@s: :)line}")
+    [[ "${#fields[@]}" -eq 4 ]] || die "invalid allowed_signers line"
+    principal="${fields[1]}"
+    options="${fields[2]}"
+    key_type="${fields[3]}"
+    key_blob="${fields[4]}"
+  done < "$allowed_signers"
+
+  [[ "$line_count" -eq 1 ]] || die "allowed_signers is empty"
   [[ "$principal" == "$signer_identity" ]] || die "unexpected allowed_signers principal"
   [[ "$options" == "namespaces=\"$signing_namespace\"" ]] || die "unexpected allowed_signers namespace"
   [[ "$key_type" == "ssh-ed25519" ]] || die "unexpected allowed_signers key type"
   [[ "$key_blob" =~ '^[A-Za-z0-9+/=]+$' ]] || die "invalid allowed_signers key blob"
-  [[ -z "$extra" ]] || die "unexpected trailing data in allowed_signers"
 
   print -r -- "$key_type $key_blob" > "$tmp_public_key"
   /bin/chmod 600 "$tmp_public_key"

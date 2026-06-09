@@ -30,5 +30,4 @@
 0644 tools/source-archive-files.txt
 0755 tools/verify-release.zsh
 0644 trust/allowed_signers
-0644 trust/release_signing_key.pub
 0644 trust/revoked_signers

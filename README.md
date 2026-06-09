@@ -145,20 +145,21 @@ source/distribution compromission as much as possible.*
 
 ### First install (TOFU mitigations)
 
-For a first install, the release key is a trust-on-first-use decision. Mitigate
-that by checking the release signing key fingerprint before relying on it:
+For a first install, the release signing policy is a trust-on-first-use decision.
+Mitigate that by checking `trust/allowed_signers` before relying on it:
 
 ```sh
-ssh-keygen -l -E sha256 -f trust/release_signing_key.pub
+shasum -a 256 trust/allowed_signers
 ```
 
-Expected fingerprint:
+Expected SHA-256:
 
 ```text
-SHA256:SpvTWBpxkzomnK4fsymKTeyU1d5s6FjOcASZN189p2E
+f02c78685f09c1d695a6459f2f401da12e80e3fc35a34004df74cfb26adf4f08
 ```
 
-Compare that fingerprint through an independent path if possible, such as:
+Compare that hash, or the file contents themselves, through an independent path
+if possible, such as:
 
 - A maintainer-controlled channel
 - A previously saved copy
@@ -357,7 +358,7 @@ The script (non-exhaustively):
 - parses `pins.conf` as data, rejecting unknown, duplicate, missing, or
   malformed pin values;
 - pins the expected GitHub and GitHub asset TLS intermediate certificates by
-  SHA-256 fingerprint;
+  SHA-256 digest;
 - invokes `curl` with `--disable` so user curl config files are ignored;
 - downloads the pinned Obsidian DMG itself and verifies its SHA-256;
 - checks the upstream Obsidian bundle id, Developer ID team, certificate common

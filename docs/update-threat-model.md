@@ -10,8 +10,8 @@ The release signing and verification scripts run their core work under
 intended to limit filesystem access during release creation and verification;
 they are hardening layers, not the primary release trust anchor.
 
-The trust anchor is the release signing public key and `allowed_signers` policy
-in the local `trust/` directory. The updater must:
+The release trust anchor is the `allowed_signers` policy in the local `trust/`
+directory. The updater must:
 
 1. Treat GitHub latest-release metadata as candidate discovery only, not as a
    trust decision.

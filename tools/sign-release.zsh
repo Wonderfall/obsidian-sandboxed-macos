@@ -24,7 +24,6 @@ internal_sandbox=0
 release_config_loader="$root/tools/release-config.zsh"
 release_conf="$root/tools/release.conf"
 version_file="$root/VERSION"
-release_public_key="$root/trust/release_signing_key.pub"
 allowed_signers_source="$root/trust/allowed_signers"
 revoked_signers_source="$root/trust/revoked_signers"
 
@@ -246,6 +245,37 @@ fingerprint_for_public_key() {
   print -r -- "${${(z)line}[2]}"
 }
 
+fingerprint_for_allowed_signers() {
+  local allowed_signers="$1"
+  local public_key="$2"
+  local line line_count=0
+  local -a fields
+  local principal options key_type key_blob
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    line_count=$((line_count + 1))
+    [[ "$line_count" -eq 1 ]] || die "allowed_signers must contain exactly one signer"
+    [[ -n "$line" ]] || die "allowed_signers is empty"
+    fields=("${(@s: :)line}")
+    [[ "${#fields[@]}" -eq 4 ]] || die "invalid allowed_signers line"
+    principal="${fields[1]}"
+    options="${fields[2]}"
+    key_type="${fields[3]}"
+    key_blob="${fields[4]}"
+  done < "$allowed_signers"
+
+  [[ "$line_count" -eq 1 ]] || die "allowed_signers is empty"
+  [[ "$principal" == "$signer_identity" ]] || die "unexpected allowed_signers principal"
+  [[ "$options" == "namespaces=\"$signing_namespace\"" ]] || die "unexpected allowed_signers namespace"
+  [[ "$key_type" == "ssh-ed25519" ]] || die "unexpected allowed_signers key type"
+  [[ "$key_blob" =~ '^[A-Za-z0-9+/=]+$' ]] || die "invalid allowed_signers key blob"
+
+  print -r -- "$key_type $key_blob" > "$public_key"
+  /bin/chmod 600 "$public_key"
+  fingerprint_for_public_key "$public_key"
+}
+
 prepare_output_dirs() {
   ensure_private_dir "$artifact_dir" "artifacts directory"
   ensure_private_dir "$release_parent" "release directory"
@@ -418,7 +448,7 @@ sign_and_verify_manifest() {
 
 main() {
   local version source_commit signing_key next_signing_key_fingerprint
-  local release_dir archive_name archive manifest public_key
+  local release_dir archive_name archive manifest public_key allowed_signers_public_key
   local signing_key_fingerprint expected_signing_key_fingerprint created_utc archive_sha256 existing_max
 
   case "$#" in
@@ -456,7 +486,6 @@ main() {
   [[ -n "$signing_key" ]] || die "missing RELEASE_SIGNING_KEY"
   signing_key="${signing_key:A}"
   require_private_existing_file "$signing_key" "release signing key"
-  require_safe_existing_file "$release_public_key" "release public key"
   require_safe_existing_file "$allowed_signers_source" "allowed signers file"
   require_safe_existing_file "$revoked_signers_source" "revoked signers file"
 
@@ -480,9 +509,10 @@ main() {
   /bin/chmod 700 "$temp_release_dir" "$temp_content_dir" "$temp_work_dir"
 
   public_key="$temp_work_dir/release-signing-key.pub"
+  allowed_signers_public_key="$temp_work_dir/allowed-signers-release-key.pub"
   public_key_for_private_key "$signing_key" "$public_key"
   signing_key_fingerprint="$(fingerprint_for_public_key "$public_key")"
-  expected_signing_key_fingerprint="$(fingerprint_for_public_key "$release_public_key")"
+  expected_signing_key_fingerprint="$(fingerprint_for_allowed_signers "$allowed_signers_source" "$allowed_signers_public_key")"
   [[ "$signing_key_fingerprint" == "$expected_signing_key_fingerprint" ]] ||
     die "release signing key fingerprint mismatch
 expected: $expected_signing_key_fingerprint
@@ -569,7 +599,6 @@ run_sandboxed_sign() {
   signing_key_pub="${signing_key}.pub"
 
   require_private_existing_file "$signing_key" "release signing key"
-  require_safe_existing_file "$release_public_key" "release public key"
   require_safe_existing_file "$allowed_signers_source" "allowed signers file"
   require_safe_existing_file "$revoked_signers_source" "revoked signers file"
 

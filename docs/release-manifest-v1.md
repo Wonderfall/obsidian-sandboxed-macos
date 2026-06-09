@@ -43,8 +43,8 @@ Field rules:
 - `archive` is exactly `obsidian-sandboxed-macos-$version.tar.gz`.
 - `archive_sha256` is the SHA-256 digest of the archive bytes.
 - `created_utc` is an audit timestamp in UTC.
-- `signing_key_fingerprint` is the OpenSSH SHA256 fingerprint of the key that
-  signed the manifest.
+- `signing_key_fingerprint` is an audit label for the OpenSSH SHA256
+  fingerprint of the `allowed_signers` key that signed the manifest.
 - `next_signing_key_fingerprint` is empty unless a future signing key is being
   announced.
 

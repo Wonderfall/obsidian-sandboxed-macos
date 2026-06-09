@@ -100,7 +100,6 @@
   (literal (param "ROOT") "/tools/source-archive-files.txt")
   (literal (param "ROOT") "/tools/verify-release.zsh")
   (literal (param "ROOT") "/trust/allowed_signers")
-  (literal (param "ROOT") "/trust/release_signing_key.pub")
   (literal (param "ROOT") "/trust/revoked_signers")
   (subpath (param "ROOT") "/artifacts/releases")
   (subpath (param "ROOT") "/artifacts/release-tmp"))
