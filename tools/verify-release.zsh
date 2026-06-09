@@ -268,7 +268,6 @@ main() {
   require ls
   require rm
   require chmod
-  require mktemp
   require tar
   require shasum
   require ssh-keygen
@@ -290,17 +289,14 @@ main() {
   require_safe_existing_file "$manifest" "release manifest"
   require_safe_existing_file "$signature" "release manifest signature"
 
-  if [[ -n "${OBSIDIAN_RELEASE_VERIFY_TMP_DIR:-}" ]]; then
-    verify_tmp_dir="${OBSIDIAN_RELEASE_VERIFY_TMP_DIR:A}"
-    case "$verify_tmp_dir" in
-      "${verify_tmp_parent:A}"/*) ;;
-      *) die "release verification temp directory must be under $verify_tmp_parent" ;;
-    esac
-    require_safe_existing_dir "$verify_tmp_dir" "release verification temp directory"
-  else
-    verify_tmp_dir="$(/usr/bin/mktemp -d "$verify_tmp_parent/work.XXXXXX")"
-    /bin/chmod 700 "$verify_tmp_dir"
-  fi
+  [[ -n "${OBSIDIAN_RELEASE_VERIFY_TMP_DIR:-}" ]] ||
+    die "missing release verification temp directory"
+  verify_tmp_dir="${OBSIDIAN_RELEASE_VERIFY_TMP_DIR:A}"
+  case "$verify_tmp_dir" in
+    "${verify_tmp_parent:A}"/*) ;;
+    *) die "release verification temp directory must be under $verify_tmp_parent" ;;
+  esac
+  require_safe_existing_dir "$verify_tmp_dir" "release verification temp directory"
   tmp_public_key="$verify_tmp_dir/release-signing-key.pub"
 
   verify_manifest_signature "$manifest" "$signature" "$trusted_allowed_signers" "$trusted_revoked_signers"
@@ -364,6 +360,7 @@ run_sandboxed_verify() {
 
   require sandbox-exec
   require uuidgen
+  require mktemp
 
   release_dir="${release_dir:A}"
   require_safe_existing_dir "$root" "project root"
@@ -391,21 +388,21 @@ run_sandboxed_verify() {
   /bin/chmod 600 "$token_file"
 
   set +e
-  /usr/bin/sandbox-exec \
-    -f "$profile" \
-    -D ROOT="$root" \
-    -D RELEASE_DIR="$release_dir" \
-    -D TMP="$verify_tmp_parent" \
-    -D HOME="$sandbox_home" \
-    /usr/bin/env -i \
-      HOME="$sandbox_home" \
-      TMPDIR="$verify_tmp_parent" \
-      PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-      LC_ALL=C \
-      OBSIDIAN_RELEASE_INTERNAL="verify" \
-      OBSIDIAN_RELEASE_TOKEN="$token" \
-      OBSIDIAN_RELEASE_TOKEN_FILE="$token_file" \
-      OBSIDIAN_RELEASE_VERIFY_TMP_DIR="$verify_tmp_dir" \
+  /usr/bin/env -i \
+    HOME="$sandbox_home" \
+    TMPDIR="$verify_tmp_parent" \
+    PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+    LC_ALL=C \
+    OBSIDIAN_RELEASE_INTERNAL="verify" \
+    OBSIDIAN_RELEASE_TOKEN="$token" \
+    OBSIDIAN_RELEASE_TOKEN_FILE="$token_file" \
+    OBSIDIAN_RELEASE_VERIFY_TMP_DIR="$verify_tmp_dir" \
+    /usr/bin/sandbox-exec \
+      -f "$profile" \
+      -D ROOT="$root" \
+      -D RELEASE_DIR="$release_dir" \
+      -D TMP="$verify_tmp_parent" \
+      -D HOME="$sandbox_home" \
       /bin/zsh "$script_path" --internal-sandbox "$release_dir"
   rc="$?"
   set -e
