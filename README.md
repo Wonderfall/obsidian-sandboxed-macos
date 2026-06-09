@@ -412,7 +412,7 @@ refer to the [Apple documentation](https://developer.apple.com/documentation/Sec
 
 To cleanly uninstall sandboxed Obsidian, remove every:
 
-- Installed `<OBSIDIAN_OUTPUT_APP_NAME>.app` from the locations you used
+- Installed `<OBSIDIAN_OUTPUT_APP_NAME>.app` from the locations you used (e.g., `/Applications`)
 - Application data at `~/Library/Containers/<OBSIDIAN_OUTPUT_BUNDLE_ID>`
 - Self-signing certificates you created for this purpose (if any)
 
