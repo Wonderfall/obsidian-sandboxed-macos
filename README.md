@@ -18,6 +18,19 @@ by Obsidian or Dynalist Inc. It is intended to help users build a local app bund
 for their own personal use; this project does not distribute Obsidian, Electron, or
 generated app bundles.*
 
+## Contents
+
+- [Context](#context)
+- [Build](#build)
+- [How to use signed releases](#how-to-use-signed-releases-recommended)
+- [Usage](#usage)
+- [Settings](#settings)
+- [Signing](#signing)
+- [Pipeline hardening and threat model](#pipeline-hardening-and-threat-model)
+- [Entitlements](#entitlements)
+- [Uninstall](#uninstall)
+- [Notes on further hardening](#notes-on-further-hardening)
+
 ## Context
 
 ### Sandboxing on macOS
