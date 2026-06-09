@@ -408,6 +408,17 @@ Some things may break. For instance, you could make an Obsidian build with no
 network at all, by removing the relevant entitlements. In any case, you should
 refer to the [Apple documentation](https://developer.apple.com/documentation/Security/app-sandbox).
 
+## Uninstall
+
+To cleanly uninstall sandboxed Obsidian, remove every:
+
+- Installed `<OBSIDIAN_OUTPUT_APP_NAME>.app` from the locations you used
+- Application data at `~/Library/Containers/<OBSIDIAN_OUTPUT_BUNDLE_ID>`
+- Self-signing certificates you created for this purpose (if any)
+
+Vaults are usually external locations, so they're preserved. Remove them
+separately if you want to.
+
 ## Notes on further hardening
 
 This build does not enable Electron's renderer sandbox or V8 jitless mode. Such
