@@ -137,8 +137,9 @@ This removes `artifacts/`.
 
 ## How to use signed releases (recommended)
 
-Use the project-owned release assets from GitHub Releases, not GitHub's
-auto-generated "Source code" archives. For version `$version`, download:
+Use the project-owned release assets from [GitHub Releases](https://github.com/Wonderfall/obsidian-sandboxed-macos/releases),
+not GitHub's auto-generated "Source code" archives. For version `$version`,
+download:
 
 ```text
 obsidian-sandboxed-macos-$version-manifest.txt
