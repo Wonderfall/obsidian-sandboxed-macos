@@ -122,7 +122,7 @@ To remove build artifacts and downloaded caches:
 
 This removes `artifacts/`.
 
-## Install and update from signed releases
+## How to use signed releases (recommended)
 
 Use the project-owned release assets from GitHub Releases, not GitHub's
 auto-generated "Source code" archives. For version `$version`, download:
@@ -133,15 +133,17 @@ obsidian-sandboxed-macos-$version-manifest.txt.sig
 obsidian-sandboxed-macos-$version.tar.gz
 ```
 
-Put the three files in one directory, then verify them from an existing trusted
-checkout:
+Signed releases offer extra security compared to just downloading the
+archive or using `git` (which would require at least Xcode CLI tools).
+They provide release intent and authenticity, especially for upgrade
+paths, guaranteed by the cryptography provided by `openssh` (which is
+a built-in macOS tool).
 
-```sh
-./tools/verify-release.zsh /path/to/release-directory
-```
+*A malicious source tree could weaken sandboxing, steal secrets or cause
+harm do your device. That's why extra care was put into preventing
+source/distribution compromission as much as possible.*
 
-After verification succeeds, extract the archive and build from the extracted
-source tree.
+### First install (TOFU mitigations)
 
 For a first install, the release key is a trust-on-first-use decision. Mitigate
 that by checking the release signing key fingerprint before relying on it:
@@ -156,11 +158,28 @@ Expected fingerprint:
 SHA256:SpvTWBpxkzomnK4fsymKTeyU1d5s6FjOcASZN189p2E
 ```
 
-Compare that fingerprint through an independent path if possible, such as a
-previously saved copy, a maintainer-controlled channel, or another trusted
-machine/network. After the first trusted install, verify future updates with the
+Compare that fingerprint through an independent path if possible, such as:
+
+- A maintainer-controlled channel
+- A previously saved copy
+- Another trusted machine/network
+
+After the first trusted install, verify future updates with the
 currently trusted checkout before extracting or replacing anything, and only
 accept versions greater than the version you already trust.
+
+### Update from an existing release
+
+Put the three files in one directory, then verify them from an existing trusted
+checkout:
+
+```sh
+./tools/verify-release.zsh /path/to/release-directory
+```
+
+After verification succeeds, extract the archive and build from the extracted
+source tree. You can use the latter as your new trust anchor for future
+updates.
 
 ## Usage
 
