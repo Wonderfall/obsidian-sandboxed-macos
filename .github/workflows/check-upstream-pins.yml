@@ -1,0 +1,263 @@
+name: Check upstream pins
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1,4"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  BASE_BRANCH: ${{ github.event.repository.default_branch }}
+
+concurrency:
+  group: check-upstream-pins
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: github.event_name == 'schedule' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    name: Check upstream pins
+    runs-on: macos-26
+    steps:
+      - name: Check out repository
+        shell: zsh {0}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+            fetch --depth=1 origin "refs/heads/${BASE_BRANCH}"
+          git checkout --detach FETCH_HEAD
+
+      - name: Check upstream pins
+        id: pins
+        shell: zsh {0}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_PIN_MIN_RELEASE_AGE_DAYS: "4"
+          UPSTREAM_PIN_RELEASE_SCAN_COUNT: "10"
+        run: |
+          set -euo pipefail
+          branch="automation/update-upstream-pins"
+          floor_args=()
+
+          /bin/mkdir -p artifacts
+          if git -c http.https://github.com/.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+              fetch --depth=1 origin "refs/heads/$branch:refs/remotes/origin/$branch" 2>/dev/null; then
+            git show "refs/remotes/origin/$branch:pins.conf" > artifacts/upstream-pin-floor.conf
+            floor_args=(--floor-pins artifacts/upstream-pin-floor.conf)
+          fi
+
+          unset GITHUB_TOKEN
+          ./tools/check-upstream-pins.zsh --write --summary artifacts/upstream-pin-check.md "${floor_args[@]}"
+
+          changed_files=()
+          while IFS= read -r file; do
+            [[ -n "$file" ]] && changed_files+=("$file")
+          done < <(git diff --name-only)
+
+          for file in "${changed_files[@]}"; do
+            if [[ "$file" != "pins.conf" ]]; then
+              print -r -- "unexpected modified file: $file" >&2
+              exit 1
+            fi
+          done
+
+          if (( ${#changed_files[@]} == 0 )); then
+            print -r -- "changed=0" >> "$GITHUB_OUTPUT"
+          else
+            print -r -- "changed=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish check summary
+        if: always()
+        shell: zsh {0}
+        run: |
+          set -euo pipefail
+          if [[ -f artifacts/upstream-pin-check.md ]]; then
+            /bin/cat artifacts/upstream-pin-check.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Open or update advisory PR
+        if: steps.pins.outputs.changed == '1'
+        shell: zsh {0}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          branch="automation/update-upstream-pins"
+          base_branch="${BASE_BRANCH}"
+          repo="${GITHUB_REPOSITORY}"
+          owner="${GITHUB_REPOSITORY%%/*}"
+          title="Update upstream pins"
+          body_file="artifacts/upstream-pin-pr-body.md"
+
+          {
+            print -r -- "This PR was generated automatically."
+            print -r -- "Do not merge without local maintainer verification."
+            print -r -- ""
+            /bin/cat artifacts/upstream-pin-check.md
+            print -r -- ""
+            print -r -- "Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          } > "$body_file"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config core.hooksPath /dev/null
+          git switch -c "$branch"
+          git add pins.conf
+          git commit -m "Update upstream pins"
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+            push --force origin "HEAD:refs/heads/$branch"
+
+          json_escape_string() {
+            print -rn -- "$1" |
+              /usr/bin/perl -0pe 's/\\/\\\\/g; s/"/\\"/g; s/\n/\\n/g; s/\r/\\r/g; s/\t/\\t/g'
+          }
+
+          json_escape_file() {
+            /usr/bin/perl -0pe 's/\\/\\\\/g; s/"/\\"/g; s/\n/\\n/g; s/\r/\\r/g; s/\t/\\t/g' "$1"
+          }
+
+          title_json="$(json_escape_string "$title")"
+          head_json="$(json_escape_string "$branch")"
+          base_json="$(json_escape_string "$base_branch")"
+          body_json="$(json_escape_file "$body_file")"
+          payload="$(/usr/bin/mktemp)"
+          pulls_json="$(/usr/bin/mktemp)"
+
+          /usr/bin/curl \
+            --disable \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --proto-redir '=https' \
+            --tlsv1.2 \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            --get \
+            --data-urlencode "state=open" \
+            --data-urlencode "head=$owner:$branch" \
+            --data-urlencode "base=$base_branch" \
+            "https://api.github.com/repos/$repo/pulls" > "$pulls_json"
+
+          pr_number="$(/usr/bin/plutil -extract 0.number raw -o - "$pulls_json" 2>/dev/null || true)"
+
+          if [[ -n "$pr_number" ]]; then
+            {
+              print -rn -- '{"title":"'
+              print -rn -- "$title_json"
+              print -rn -- '","body":"'
+              print -rn -- "$body_json"
+              print -r -- '"}'
+            } > "$payload"
+
+            /usr/bin/curl \
+              --disable \
+              --fail \
+              --silent \
+              --show-error \
+              --location \
+              --proto '=https' \
+              --proto-redir '=https' \
+              --tlsv1.2 \
+              -X PATCH \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/$repo/pulls/$pr_number" \
+              --data-binary "@$payload" >/dev/null
+          else
+            {
+              print -rn -- '{"title":"'
+              print -rn -- "$title_json"
+              print -rn -- '","head":"'
+              print -rn -- "$head_json"
+              print -rn -- '","base":"'
+              print -rn -- "$base_json"
+              print -rn -- '","body":"'
+              print -rn -- "$body_json"
+              print -r -- '","maintainer_can_modify":true}'
+            } > "$payload"
+
+            /usr/bin/curl \
+              --disable \
+              --fail \
+              --silent \
+              --show-error \
+              --location \
+              --proto '=https' \
+              --proto-redir '=https' \
+              --tlsv1.2 \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/$repo/pulls" \
+              --data-binary "@$payload" >/dev/null
+          fi
+
+      - name: Close obsolete advisory PR
+        if: steps.pins.outputs.changed == '0'
+        shell: zsh {0}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          branch="automation/update-upstream-pins"
+          base_branch="${BASE_BRANCH}"
+          repo="${GITHUB_REPOSITORY}"
+          owner="${GITHUB_REPOSITORY%%/*}"
+          pulls_json="$(/usr/bin/mktemp)"
+          payload="$(/usr/bin/mktemp)"
+
+          /usr/bin/curl \
+            --disable \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --proto-redir '=https' \
+            --tlsv1.2 \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            --get \
+            --data-urlencode "state=open" \
+            --data-urlencode "head=$owner:$branch" \
+            --data-urlencode "base=$base_branch" \
+            "https://api.github.com/repos/$repo/pulls" > "$pulls_json"
+
+          pr_number="$(/usr/bin/plutil -extract 0.number raw -o - "$pulls_json" 2>/dev/null || true)"
+          [[ -n "$pr_number" ]] || exit 0
+
+          print -r -- '{"state":"closed"}' > "$payload"
+          /usr/bin/curl \
+            --disable \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --proto-redir '=https' \
+            --tlsv1.2 \
+            -X PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$repo/pulls/$pr_number" \
+            --data-binary "@$payload" >/dev/null
+
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+            push origin ":refs/heads/$branch" 2>/dev/null || true

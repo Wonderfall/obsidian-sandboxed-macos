@@ -1,6 +1,7 @@
 # Files included in release source archives.
 # Format: <mode> <relative-path>
 
+0644 .github/workflows/check-upstream-pins.yml
 0644 .gitignore
 0644 AGENTS.md
 0644 LICENSE
@@ -14,6 +15,7 @@
 0644 entitlements/child.entitlements
 0644 entitlements/parent.entitlements
 0644 pins.conf
+0644 sandbox/check-upstream-pins.sb
 0644 sandbox/fetch.sb
 0644 sandbox/release-fetch.sb
 0644 sandbox/release-sign.sb
@@ -23,6 +25,7 @@
 0644 sandbox/stage.sb
 0644 sandbox/unpack-verify.sb
 0644 sandbox/verify.sb
+0755 tools/check-upstream-pins.zsh
 0755 tools/fetch-latest-release.zsh
 0644 tools/release-config.zsh
 0644 tools/release.conf
