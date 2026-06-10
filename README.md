@@ -191,7 +191,7 @@ The manifest should match the expected release metadata, especially:
 - `format=obsidian-sandboxed-macos-release-v1`
 - `project=Wonderfall/obsidian-sandboxed-macos`
 - `archive=obsidian-sandboxed-macos-$version.tar.gz`
-- `signing_key_fingerprint` must equel the hash printed by `ssh-keygen`
+- `signing_key_fingerprint` must equal the hash printed by `ssh-keygen`
 - `archive_sha256` must equal the hash printed by `shasum`
 
 You can now unpack, preferably using Archive Utility over `tar -xzf`
