@@ -28,9 +28,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          git_auth_header="AUTHORIZATION: basic $(print -rn -- "x-access-token:${GITHUB_TOKEN}" | /usr/bin/base64 | /usr/bin/tr -d '\n')"
           git init .
           git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
-          git -c http.https://github.com/.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+          git -c http.https://github.com/.extraheader="$git_auth_header" \
             fetch --depth=1 origin "refs/heads/${BASE_BRANCH}"
           git checkout --detach FETCH_HEAD
 
@@ -45,9 +46,10 @@ jobs:
           set -euo pipefail
           branch="automation/update-upstream-pins"
           floor_args=()
+          git_auth_header="AUTHORIZATION: basic $(print -rn -- "x-access-token:${GITHUB_TOKEN}" | /usr/bin/base64 | /usr/bin/tr -d '\n')"
 
           /bin/mkdir -p artifacts
-          if git -c http.https://github.com/.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+          if git -c http.https://github.com/.extraheader="$git_auth_header" \
               fetch --depth=1 origin "refs/heads/$branch:refs/remotes/origin/$branch" 2>/dev/null; then
             git show "refs/remotes/origin/$branch:pins.conf" > artifacts/upstream-pin-floor.conf
             floor_args=(--floor-pins artifacts/upstream-pin-floor.conf)
@@ -97,6 +99,7 @@ jobs:
           owner="${GITHUB_REPOSITORY%%/*}"
           title="Update upstream pins"
           body_file="artifacts/upstream-pin-pr-body.md"
+          git_auth_header="AUTHORIZATION: basic $(print -rn -- "x-access-token:${GITHUB_TOKEN}" | /usr/bin/base64 | /usr/bin/tr -d '\n')"
 
           {
             print -r -- "This PR was generated automatically."
@@ -113,7 +116,7 @@ jobs:
           git switch -c "$branch"
           git add pins.conf
           git commit -m "Update upstream pins"
-          git -c http.https://github.com/.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+          git -c http.https://github.com/.extraheader="$git_auth_header" \
             push --force origin "HEAD:refs/heads/$branch"
 
           json_escape_string() {
@@ -220,6 +223,7 @@ jobs:
           owner="${GITHUB_REPOSITORY%%/*}"
           pulls_json="$(/usr/bin/mktemp)"
           payload="$(/usr/bin/mktemp)"
+          git_auth_header="AUTHORIZATION: basic $(print -rn -- "x-access-token:${GITHUB_TOKEN}" | /usr/bin/base64 | /usr/bin/tr -d '\n')"
 
           /usr/bin/curl \
             --disable \
@@ -259,5 +263,5 @@ jobs:
             "https://api.github.com/repos/$repo/pulls/$pr_number" \
             --data-binary "@$payload" >/dev/null
 
-          git -c http.https://github.com/.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+          git -c http.https://github.com/.extraheader="$git_auth_header" \
             push origin ":refs/heads/$branch" 2>/dev/null || true
