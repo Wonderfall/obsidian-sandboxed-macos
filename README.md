@@ -125,8 +125,8 @@ obsidian-sandboxed-macos-$version.tar.gz
 Signed releases offer extra security compared to just downloading the
 archive or using `git` (which would require at least Xcode CLI tools).
 They provide release intent and authenticity, especially for upgrade
-paths, guaranteed by the cryptography provided by `openssh` (which is
-a built-in macOS tool).
+paths, backed by the cryptographic signature support provided by `openssh`
+(which is a built-in macOS tool).
 
 *A malicious source tree could weaken sandboxing, steal secrets or cause
 harm to your device. That's why extra care was put into preventing
@@ -136,7 +136,7 @@ source/distribution compromise as much as possible.*
 
 For a first install, the release signing policy is a trust-on-first-use (TOFU)
 decision. It is suggested you mitigate TOFU as much as possible to bootstrap
-trust. Generally, this can be done by verifying release signing policy through
+trust. Generally, this can be done by verifying the release signing policy through
 independent paths, such as:
 
 - A maintainer-controlled channel
@@ -176,13 +176,16 @@ ssh-keygen -Y verify \
   < obsidian-sandboxed-macos-$version-manifest.txt
 ```
 
-Inspect the signed manifest and compare the internal signing key hash
-and the archive hash:
+Expected output, which also shows the hash of the internal signing key:
+
+```text
+Good "obsidian-sandboxed-macos.release@wonderfall.dev" signature for release@wonderfall.dev with ED25519 key SHA256:SpvTWBpxkzomnK4fsymKTeyU1d5s6FjOcASZN189p2E
+```
+
+Inspect the signed manifest and compare the hashes:
 
 ```sh
 cat obsidian-sandboxed-macos-$version-manifest.txt
-awk '{ print $3 " " $4 }' allowed_signers > release-key.pub
-ssh-keygen -l -E sha256 -f release-key.pub
 shasum -a 256 obsidian-sandboxed-macos-$version.tar.gz
 ```
 
