@@ -46,6 +46,12 @@ jobs:
             fetch --depth=1 origin "$checkout_ref"
           git checkout --detach FETCH_HEAD
 
+      - name: Check shell failure propagation
+        shell: zsh {0}
+        run: |
+          set -euo pipefail
+          ./build-sandboxed-obsidian.zsh --self-test
+
       - name: Build and verify
         shell: zsh {0}
         env:

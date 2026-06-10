@@ -65,11 +65,14 @@ run_or_report() {
   shift
   local output rc
 
-  if output="$("$@" 2>&1)"; then
+  set +e
+  output="$("$@" 2>&1)"
+  rc="$?"
+  set -e
+  if [[ "$rc" == "0" ]]; then
     return 0
   fi
 
-  rc="$?"
   print -r -- "error: $label failed (exit $rc)" >&2
   if [[ -n "$output" ]]; then
     print -r -- "$output" | print_indented_err
@@ -90,7 +93,7 @@ warn() {
 }
 
 usage() {
-  print -r -- "usage: ${script_path:t} [clean]" >&2
+  print -r -- "usage: ${script_path:t} [clean|--self-test]" >&2
 }
 
 cleanup_on_exit() {
@@ -129,6 +132,9 @@ case "$#" in
     case "$1" in
       clean)
         command="clean"
+        ;;
+      --self-test)
+        command="self-test"
         ;;
       *)
         usage
@@ -218,6 +224,19 @@ run_clean() {
 
   clean_path "$artifact_dir"
   log_done "Removed $(display_path "$artifact_dir")"
+}
+
+run_self_test() {
+  local rc
+
+  if run_or_report "intentional failure propagation self-test" /bin/zsh -fc 'print -r -- expected failure output >&2; exit 37' >/dev/null 2>&1; then
+    die "run_or_report self-test unexpectedly succeeded"
+  else
+    rc="$?"
+  fi
+
+  [[ "$rc" == "37" ]] || die "run_or_report self-test returned $rc instead of 37"
+  log_done "Failure propagation self-test"
 }
 
 pins_file="$root/pins.conf"
@@ -1678,6 +1697,11 @@ if [[ "$command" == "clean" ]]; then
   trap cleanup_on_exit EXIT
   acquire_build_lock
   run_clean
+  exit 0
+fi
+
+if [[ "$command" == "self-test" ]]; then
+  run_self_test
   exit 0
 fi
 
