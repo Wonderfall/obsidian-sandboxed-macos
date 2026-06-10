@@ -7,11 +7,7 @@ and verifies upstream Obsidian, replaces the runtime with the sandbox-compatible
 Electron build, applies focused entitlements, and signs the result with
 hardened runtime enabled.
 
-It uses macOS-provided command line tools only. There are no Xcode, Homebrew, Node,
-or Python dependencies, and the script does not patch Obsidian's ASAR archive.
-
-*The cute illustration above does not accurately reflect all the properties and the
-true purpose of sandboxing. For a better understanding, read the section below.*
+It uses macOS-provided command line tools only.
 
 *This project is independent and is not affiliated with, endorsed by, or sponsored
 by Obsidian or Dynalist Inc. It is intended to help users build a local app bundle
@@ -30,7 +26,7 @@ generated app bundles.*
 - [Threat model](#threat-model)
 - [Entitlements](#entitlements)
 - [Uninstall](#uninstall)
-- [Notes on further hardening](#notes-on-further-hardening)
+- [Known limitations](#known-limitations)
 
 ## Context
 
@@ -494,7 +490,7 @@ To cleanly uninstall sandboxed Obsidian, remove every:
 Vaults are usually external locations, so they're preserved. Remove them
 separately if you want to.
 
-## Notes on further hardening
+## Known limitations
 
 This build does not enable Electron's renderer sandbox or V8 jitless mode. Such
 hardening is possible but requires ASAR file patching, which is currently not
