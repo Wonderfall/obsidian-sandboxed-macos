@@ -21,6 +21,7 @@ generated app bundles.*
 - [Install and update securely](#install-and-update-securely)
 - [Build sandboxed Obsidian](#build-sandboxed-obsidian)
 - [Use sandboxed Obsidian](#use-sandboxed-obsidian)
+- [Update sandboxed Obsidian](#update-sandboxed-obsidian)
 - [Settings](#settings)
 - [Signing](#signing)
 - [Threat model](#threat-model)
@@ -289,6 +290,58 @@ as the original Obsidian app. As with any sandboxed app, app data mostly lives i
 you can use different Obsidian installations isolated from each other if you so desire.
 
 At this moment, there is no known breakage caused by sandboxing Obsidian.
+
+## Update sandboxed Obsidian
+
+There are two main components when considering [Obsidian updates](https://obsidian.md/help/updates):
+
+- **Obsidian**: the "true" Obsidian version
+- **Electron**: the Chromium-based engine that powers the app
+
+The difference can be displayed in the "About Obsidian" window, e.g.:
+
+```text
+Version 1.12.7 (Installer 1.12.4)
+```
+
+`Version` usually refers to Obsidian's version, while `Installer` refers to the version
+of the app bundle itself (which contains Electron + original Obsidian files). Ideally,
+you want them to be matched. `Installer` updates can ship important Electron security fixes.
+
+Obsidian does not distribute `Installer` updates through the app even though they technically
+can since their official app is unsandboxed. When it's sandboxed, Obsidian cannot do that,
+and the intended way would be to get updates from the Mac App Store. Because of that, you need
+to do a rebuild to update the `Installer` (and thus Electron), which is recommended to do regularly.
+
+### Obsidian updates (in-app updater)
+
+Obsidian updates can be handled within the Obsidian app directly. They're distributed
+as ASAR updates that live in app data (`~/Library/Containers`). This still works
+perfectly fine and you should be able to get new Obsidian fixes and features without
+doing a full rebuild.
+
+### Electron updates (rebuild required)
+
+Electron updates require [building a new app bundle](#build-sandboxed-obsidian) with updated versions.
+Versions are defined in the `pins.conf` file. The suggested way to update this file is to use a
+[newer version of this project](#update-from-an-existing-release) which usually updates
+this file regularly with new Obsidian and Electron updates.
+
+If for some reason this project lags behind on updates, you can update `pins.conf` yourself.
+However, please note that this configuration won't be tested or supported, and that
+updating `pins.conf` requires **careful security considerations**.
+
+Note that the project bundles a tool that you can use to update `pins.conf`:
+
+```sh
+./tools/check-upstream-pins.zsh
+```
+
+This fetches latest versions for Obsidian and Electron, selects candidates according to
+criteria such as release age, and updates `pins.conf` if `--write` is passed. For
+additional verification, you can use an independent machine/network, or use this
+repository's CI which [runs this check regularly](https://github.com/Wonderfall/obsidian-sandboxed-macos/actions/workflows/check-upstream-pins.yml)
+and may provide an advisory comparison.
 
 ## Settings
 
