@@ -21,12 +21,12 @@ generated app bundles.*
 ## Contents
 
 - [Context](#context)
-- [Build](#build)
-- [How to use signed releases](#how-to-use-signed-releases-recommended)
-- [Usage](#usage)
+- [Install and update securely](#install-and-update-securely)
+- [Build sandboxed Obsidian](#build-sandboxed-obsidian)
+- [Use sandboxed Obsidian](#use-sandboxed-obsidian)
 - [Settings](#settings)
 - [Signing](#signing)
-- [Pipeline hardening and threat model](#pipeline-hardening-and-threat-model)
+- [Threat model](#threat-model)
 - [Entitlements](#entitlements)
 - [Uninstall](#uninstall)
 - [Notes on further hardening](#notes-on-further-hardening)
@@ -110,32 +110,7 @@ involves additional parties to trust arbitrarily, and would probably break ToS.
 For project source updates, use the signed release assets described below rather
 than GitHub's auto-generated source archives.
 
-
-## Build
-
-```sh
-./build-sandboxed-obsidian.zsh
-```
-
-The output app is written to:
-
-```text
-artifacts/out/Obsidian Sandboxed.app
-```
-
-The script currently targets Apple Silicon (`arm64`). The default command
-builds the app; inputs come from `pins.conf` and the environment variables
-below.
-
-To remove build artifacts and downloaded caches:
-
-```sh
-./build-sandboxed-obsidian.zsh clean
-```
-
-This removes `artifacts/`.
-
-## How to use signed releases (recommended)
+## Install and update securely
 
 Use the project-owned release assets from [GitHub Releases](https://github.com/Wonderfall/obsidian-sandboxed-macos/releases),
 not GitHub's auto-generated "Source code" archives. For version `$version`,
@@ -255,7 +230,31 @@ After verification succeeds, extract the archive and build from the extracted
 source tree. You can use the latter as your new trust anchor for future
 updates.
 
-## Usage
+## Build sandboxed Obsidian
+
+```sh
+./build-sandboxed-obsidian.zsh
+```
+
+The output app is written to:
+
+```text
+artifacts/out/Obsidian Sandboxed.app
+```
+
+The script currently targets Apple Silicon (`arm64`). The default command
+builds the app; inputs come from `pins.conf` and the environment variables
+below.
+
+To remove build artifacts and downloaded caches:
+
+```sh
+./build-sandboxed-obsidian.zsh clean
+```
+
+This removes `artifacts/`.
+
+## Use sandboxed Obsidian
 
 After a successful build, copy or move the app bundle from `artifacts/out/` to `/Applications`
 or `~/Applications` using Finder (recommended) or Terminal.
@@ -407,7 +406,7 @@ Xcode.
 
 *Publicly sharing your signed app is not recommended as it may break Apple's or Obsidian's ToS.*
 
-## Pipeline hardening and threat model
+## Threat model
 
 This scripts aims to implement several hardening measures against supply-chain
 compromission. Machine state can't be completely untrusted as any malicious program
