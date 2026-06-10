@@ -1,6 +1,7 @@
 # Files included in release source archives.
 # Format: <mode> <relative-path>
 
+0644 .github/workflows/build.yml
 0644 .github/workflows/check-upstream-pins.yml
 0644 .gitignore
 0644 AGENTS.md

@@ -1,0 +1,56 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    name: Build sandboxed app
+    runs-on: macos-26
+    steps:
+      - name: Check out repository
+        shell: zsh {0}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          git_auth_header="AUTHORIZATION: basic $(print -rn -- "x-access-token:${GITHUB_TOKEN}" | /usr/bin/base64 | /usr/bin/tr -d '\n')"
+
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            checkout_ref="refs/pull/${PR_NUMBER}/merge"
+          else
+            checkout_ref="$GITHUB_REF"
+          fi
+
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -c http.https://github.com/.extraheader="$git_auth_header" \
+            fetch --depth=1 origin "$checkout_ref"
+          git checkout --detach FETCH_HEAD
+
+      - name: Build and verify
+        shell: zsh {0}
+        env:
+          SIGN_IDENTITY: "-"
+          SIGN_TIMESTAMP: "0"
+        run: |
+          set -euo pipefail
+          ./build-sandboxed-obsidian.zsh

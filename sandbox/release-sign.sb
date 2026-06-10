@@ -71,6 +71,7 @@
   (literal "/dev/urandom")
   (literal (param "SIGNING_KEY"))
   (literal (param "SIGNING_KEY_PUB"))
+  (literal (param "ROOT") "/.github/workflows/build.yml")
   (literal (param "ROOT") "/.github/workflows/check-upstream-pins.yml")
   (literal (param "ROOT") "/.gitignore")
   (literal (param "ROOT") "/AGENTS.md")
