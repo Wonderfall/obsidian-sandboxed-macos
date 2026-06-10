@@ -97,17 +97,12 @@ usage() {
 }
 
 cleanup_on_exit() {
-  local pid
-
   if [[ -n "$phase_token_dir" && -d "$phase_token_dir" ]]; then
     /bin/rm -rf -- "$phase_token_dir"
   fi
 
   if [[ "$build_lock_acquired" == "1" && -d "$build_lock_dir" ]]; then
-    pid="$(< "$build_lock_dir/pid" 2>/dev/null || true)"
-    if [[ "$pid" == "$$" ]]; then
-      /bin/rm -rf -- "$build_lock_dir"
-    fi
+    /bin/rm -rf -- "$build_lock_dir"
   fi
 }
 
@@ -1685,7 +1680,11 @@ run_parent_build() {
   phase_total="${#phases[@]}"
   for phase in "${phases[@]}"; do
     phase_index=$((phase_index + 1))
-    run_phase "$phase" "$phase_index" "$phase_total"
+    if run_phase "$phase" "$phase_index" "$phase_total"; then
+      :
+    else
+      return "$?"
+    fi
   done
 
   log_blank
@@ -1696,8 +1695,11 @@ run_parent_build() {
 if [[ "$command" == "clean" ]]; then
   trap cleanup_on_exit EXIT
   acquire_build_lock
+  set +e
   run_clean
-  exit 0
+  rc="$?"
+  set -e
+  exit "$rc"
 fi
 
 if [[ "$command" == "self-test" ]]; then
@@ -1712,5 +1714,9 @@ if [[ -n "$requested_phase" ]]; then
 else
   trap cleanup_on_exit EXIT
   acquire_build_lock
+  set +e
   run_parent_build
+  rc="$?"
+  set -e
+  exit "$rc"
 fi
