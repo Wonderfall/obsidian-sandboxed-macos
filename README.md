@@ -21,6 +21,7 @@ generated app bundles.*
 ## Contents
 
 - [Context](#context)
+- [Requirements](#requirements)
 - [Install and update securely](#install-and-update-securely)
 - [Build sandboxed Obsidian](#build-sandboxed-obsidian)
 - [Use sandboxed Obsidian](#use-sandboxed-obsidian)
@@ -109,6 +110,14 @@ involves additional parties to trust arbitrarily, and would probably break ToS.
 
 For project source updates, use the signed release assets described below rather
 than GitHub's auto-generated source archives.
+
+## Requirements
+
+This project intends to only support the **latest macOS stable release** on **Apple
+Silicon** (`arm64`) hardware. **No external dependencies are required** beyond the macOS
+built-in tools.
+
+Currently, the project is being developed for macOS Tahoe 26.
 
 ## Install and update securely
 
