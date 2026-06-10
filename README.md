@@ -176,10 +176,13 @@ ssh-keygen -Y verify \
   < obsidian-sandboxed-macos-$version-manifest.txt
 ```
 
-Inspect the signed manifest and compare the archive hash:
+Inspect the signed manifest and compare the internal signing key hash
+and the archive hash:
 
 ```sh
 cat obsidian-sandboxed-macos-$version-manifest.txt
+awk '{ print $3 " " $4 }' allowed_signers > release-key.pub
+ssh-keygen -l -E sha256 -f release-key.pub
 shasum -a 256 obsidian-sandboxed-macos-$version.tar.gz
 ```
 
@@ -188,7 +191,7 @@ The manifest should match the expected release metadata, especially:
 - `format=obsidian-sandboxed-macos-release-v1`
 - `project=Wonderfall/obsidian-sandboxed-macos`
 - `archive=obsidian-sandboxed-macos-$version.tar.gz`
-- `signing_key_fingerprint=SHA256:SpvTWBpxkzomnK4fsymKTeyU1d5s6FjOcASZN189p2E`
+- `signing_key_fingerprint` must equel the hash printed by `ssh-keygen`
 - `archive_sha256` must equal the hash printed by `shasum`
 
 You can now unpack, preferably using Archive Utility over `tar -xzf`
