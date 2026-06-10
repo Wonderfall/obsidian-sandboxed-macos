@@ -1318,7 +1318,7 @@ run_internal_sandboxed_check() {
 
 run_sandboxed_check() {
   local profile sandbox_home token token_file summary_dir_param floor_pins_param rc
-  local -a original_args
+  local -a original_args sandbox_env
 
   original_args=("$@")
   parse_args "$@"
@@ -1358,6 +1358,11 @@ run_sandboxed_check() {
   print -r -- "$token" > "$token_file"
   /bin/chmod 600 "$token_file"
 
+  sandbox_env=()
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    sandbox_env+=(GITHUB_TOKEN="$GITHUB_TOKEN")
+  fi
+
   set +e
   /usr/bin/env -i \
     HOME="$sandbox_home" \
@@ -1366,6 +1371,7 @@ run_sandboxed_check() {
     LC_ALL=C \
     UPSTREAM_PIN_MIN_RELEASE_AGE_DAYS="$min_release_age_days" \
     UPSTREAM_PIN_RELEASE_SCAN_COUNT="$release_scan_count" \
+    "${sandbox_env[@]}" \
     OBSIDIAN_PIN_CHECK_INTERNAL="check" \
     OBSIDIAN_PIN_CHECK_TOKEN="$token" \
     OBSIDIAN_PIN_CHECK_TOKEN_FILE="$token_file" \

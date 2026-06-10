@@ -35,10 +35,13 @@ jobs:
       - name: Check upstream pins
         id: pins
         shell: zsh {0}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
           /bin/mkdir -p artifacts
+          print -r -- "::add-mask::$GITHUB_TOKEN"
 
           ./tools/check-upstream-pins.zsh --write --summary artifacts/upstream-pin-check.md
 
