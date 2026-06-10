@@ -73,6 +73,12 @@
   (subpath (param "ROOT") "/artifacts/cache")
   (subpath (param "ROOT") "/artifacts/build"))
 
+(allow file-write-xattr
+  (subpath (param "ROOT") "/artifacts/build/electron")
+  (subpath (param "ROOT") "/artifacts/build/tmp")
+  (subpath (param "ROOT") "/artifacts/build/source")
+  (subpath (param "ROOT") "/artifacts/build/mnt"))
+
 (allow file-write*
   (subpath (param "ROOT") "/artifacts/build/electron")
   (subpath (param "ROOT") "/artifacts/build/tmp")

@@ -726,6 +726,7 @@ expected_zip_sha256_from_manifest() {
 
 verify_upstream_obsidian() {
   local app="$1"
+  local label="${2:-upstream Obsidian}"
   local bundle_id
   local version
 
@@ -736,7 +737,7 @@ verify_upstream_obsidian() {
   [[ "$version" == "$obsidian_version" ]] ||
     die "pinned Obsidian version $obsidian_version does not match bundle CFBundleShortVersionString $version"
 
-  run_or_report "upstream Obsidian signature verification" \
+  run_or_report "$label signature verification" \
     codesign \
     --verify \
     --deep \
@@ -745,7 +746,7 @@ verify_upstream_obsidian() {
     --test-requirement "$obsidian_requirement" \
     "$app"
 
-  run_or_report "upstream Obsidian Gatekeeper assessment" \
+  run_or_report "$label Gatekeeper assessment" \
     spctl --assess --type execute --verbose=4 "$app"
 }
 
@@ -879,14 +880,17 @@ unpack_verify_obsidian() {
   mounted_app="$(find "$mountpoint" -maxdepth 2 -name "Obsidian.app" -type d -print -quit)"
   [[ -n "$mounted_app" ]] || die "could not find Obsidian.app in $obsidian_asset"
 
+  log_detail "Verifying mounted upstream Obsidian signature and Gatekeeper assessment"
+  verify_upstream_obsidian "$mounted_app" "mounted upstream Obsidian"
+
   log_detail "Copying upstream Obsidian.app"
-  ditto "$mounted_app" "$source_app"
+  ditto --rsrc --extattr --acl --qtn "$mounted_app" "$source_app"
   cleanup_mount
   trap - EXIT
   rmdir "$mountpoint" 2>/dev/null || true
 
-  log_detail "Verifying upstream Obsidian signature and Gatekeeper assessment"
-  verify_upstream_obsidian "$source_app"
+  log_detail "Verifying copied upstream Obsidian signature and Gatekeeper assessment"
+  verify_upstream_obsidian "$source_app" "copied upstream Obsidian"
 }
 
 output_helper_name() {
