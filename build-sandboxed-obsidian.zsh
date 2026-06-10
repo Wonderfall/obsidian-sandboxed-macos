@@ -726,7 +726,6 @@ expected_zip_sha256_from_manifest() {
 
 verify_upstream_obsidian() {
   local app="$1"
-  local label="${2:-upstream Obsidian}"
   local bundle_id
   local version
 
@@ -737,16 +736,16 @@ verify_upstream_obsidian() {
   [[ "$version" == "$obsidian_version" ]] ||
     die "pinned Obsidian version $obsidian_version does not match bundle CFBundleShortVersionString $version"
 
-  run_or_report "$label signature verification" \
+  run_or_report "upstream Obsidian signature verification" \
     codesign \
     --verify \
     --deep \
     --strict \
-    --verbose=4 \
+    --verbose=2 \
     --test-requirement "$obsidian_requirement" \
     "$app"
 
-  run_or_report "$label Gatekeeper assessment" \
+  run_or_report "upstream Obsidian Gatekeeper assessment" \
     spctl --assess --type execute --verbose=4 "$app"
 }
 
@@ -880,17 +879,14 @@ unpack_verify_obsidian() {
   mounted_app="$(find "$mountpoint" -maxdepth 2 -name "Obsidian.app" -type d -print -quit)"
   [[ -n "$mounted_app" ]] || die "could not find Obsidian.app in $obsidian_asset"
 
-  log_detail "Verifying mounted upstream Obsidian signature and Gatekeeper assessment"
-  verify_upstream_obsidian "$mounted_app" "mounted upstream Obsidian"
-
   log_detail "Copying upstream Obsidian.app"
   ditto "$mounted_app" "$source_app"
   cleanup_mount
   trap - EXIT
   rmdir "$mountpoint" 2>/dev/null || true
 
-  log_detail "Verifying copied upstream Obsidian signature and Gatekeeper assessment"
-  verify_upstream_obsidian "$source_app" "copied upstream Obsidian"
+  log_detail "Verifying upstream Obsidian signature and Gatekeeper assessment"
+  verify_upstream_obsidian "$source_app"
 }
 
 output_helper_name() {
@@ -1614,34 +1610,11 @@ sandbox_profile_for() {
   esac
 }
 
-report_recent_sandbox_denials() {
-  local phase="$1"
-  local start="$2"
-  local fallback_predicate output predicate
-
-  [[ "${OBSIDIAN_REPORT_SANDBOX_DENIALS:-1}" != "0" ]] || return 0
-  [[ -x /usr/bin/log ]] || return 0
-  [[ -n "$start" ]] || return 0
-
-  predicate='eventMessage CONTAINS[c] "Sandbox:" AND eventMessage CONTAINS[c] "deny(" AND (eventMessage CONTAINS[c] "codesign(" OR eventMessage CONTAINS[c] "spctl(" OR eventMessage CONTAINS[c] "security" OR eventMessage CONTAINS[c] "trust" OR eventMessage CONTAINS[c] "syspolicy")'
-  output="$(/usr/bin/log show --style compact --start "$start" --predicate "$predicate" 2>/dev/null | /usr/bin/tail -n 120)" || true
-  if [[ -z "$output" ]]; then
-    fallback_predicate='eventMessage CONTAINS[c] "Sandbox:" AND eventMessage CONTAINS[c] "deny("'
-    output="$(/usr/bin/log show --style compact --start "$start" --predicate "$fallback_predicate" 2>/dev/null | /usr/bin/tail -n 80)" || true
-  fi
-  [[ -n "$output" ]] || return 0
-
-  print -r -- "sandbox diagnostics for failed phase $phase:" >&2
-  while IFS= read -r line; do
-    print -r -- "    $line" >&2
-  done <<< "$output"
-}
-
 run_phase() {
   local phase="$1"
   local phase_index="$2"
   local phase_total="$3"
-  local profile phase_home phase_tmp phase_log_start token token_file
+  local profile phase_home phase_tmp token token_file
   local rc
 
   profile="$(sandbox_profile_for "$phase")"
@@ -1663,7 +1636,6 @@ run_phase() {
   verify_static_policy_inputs_unchanged
   log_blank
   log "[$phase_index/$phase_total] $(phase_label "$phase")"
-  phase_log_start="$(/bin/date '+%Y-%m-%d %H:%M:%S')"
   if /usr/bin/sandbox-exec \
       -f "$profile" \
       -D ROOT="$root" \
@@ -1689,7 +1661,6 @@ run_phase() {
     log_done "$(phase_label "$phase")"
   else
     rc="$?"
-    report_recent_sandbox_denials "$phase" "$phase_log_start"
     print -r -- "error: phase failed: $(phase_label "$phase") (exit $rc)" >&2
     return "$rc"
   fi
