@@ -5,8 +5,7 @@ on:
   schedule:
     - cron: "17 4 * * 1,4"
 
-permissions:
-  contents: read
+permissions: {}
 
 env:
   BASE_BRANCH: ${{ github.event.repository.default_branch }}
@@ -22,8 +21,7 @@ jobs:
     if: github.event_name == 'schedule' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     name: Check upstream pins
     runs-on: macos-26
-    permissions:
-      contents: read
+    permissions: {}
     steps:
       - name: Check out repository
         shell: zsh {0}
@@ -41,7 +39,6 @@ jobs:
           set -euo pipefail
 
           /bin/mkdir -p artifacts
-          unset GITHUB_TOKEN
 
           ./tools/check-upstream-pins.zsh --write --summary artifacts/upstream-pin-check.md
 

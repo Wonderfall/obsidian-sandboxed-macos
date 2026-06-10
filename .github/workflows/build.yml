@@ -10,10 +10,11 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  schedule:
+    - cron: "43 5 * * 0"
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: build-${{ github.event.pull_request.number || github.ref }}
@@ -24,15 +25,14 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Build sandboxed app
     runs-on: macos-26
+    permissions: {}
     steps:
       - name: Check out repository
         shell: zsh {0}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          git_auth_header="AUTHORIZATION: basic $(print -rn -- "x-access-token:${GITHUB_TOKEN}" | /usr/bin/base64 | /usr/bin/tr -d '\n')"
 
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
             checkout_ref="refs/pull/${PR_NUMBER}/merge"
@@ -42,8 +42,7 @@ jobs:
 
           git init .
           git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
-          git -c http.https://github.com/.extraheader="$git_auth_header" \
-            fetch --depth=1 origin "$checkout_ref"
+          git fetch --depth=1 origin "$checkout_ref"
           git checkout --detach FETCH_HEAD
 
       - name: Check shell failure propagation
