@@ -73,12 +73,6 @@
   (subpath (param "ROOT") "/artifacts/cache")
   (subpath (param "ROOT") "/artifacts/build"))
 
-(allow file-write-xattr
-  (subpath (param "ROOT") "/artifacts/build/electron")
-  (subpath (param "ROOT") "/artifacts/build/tmp")
-  (subpath (param "ROOT") "/artifacts/build/source")
-  (subpath (param "ROOT") "/artifacts/build/mnt"))
-
 (allow file-write*
   (subpath (param "ROOT") "/artifacts/build/electron")
   (subpath (param "ROOT") "/artifacts/build/tmp")
@@ -93,10 +87,19 @@
 (allow mach-lookup
   (global-name "com.apple.DiskArbitration.diskarbitrationd")
   (global-name "com.apple.diskimagesiod.xpc")
+  (global-name "com.apple.lsd.trustedsignatures")
   (global-name "com.apple.security.syspolicy")
+  (global-name "com.apple.security.syspolicy.exec")
+  (global-name "com.apple.security.AppleSystemPolicy.mig")
   (global-name "com.apple.securityd")
   (global-name "com.apple.securityd.xpc")
+  (global-name "com.apple.securityd.system")
+  (global-name "com.apple.securityd.systemkeychain")
+  (global-name "com.apple.security.translocation")
   (global-name "com.apple.SecurityServer")
   (global-name "com.apple.system.hdiejectd.xpc")
   (global-name "com.apple.trustd")
-  (global-name "com.apple.trustd.agent"))
+  (global-name "com.apple.trustd.agent")
+  (global-name "com.apple.trustdFileHelper")
+  (global-name "com.apple.TrustEvaluationAgent")
+  (global-name "com.apple.TrustEvaluationAgent.system"))

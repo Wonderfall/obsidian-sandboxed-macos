@@ -884,7 +884,7 @@ unpack_verify_obsidian() {
   verify_upstream_obsidian "$mounted_app" "mounted upstream Obsidian"
 
   log_detail "Copying upstream Obsidian.app"
-  ditto --rsrc --extattr --acl --qtn "$mounted_app" "$source_app"
+  ditto "$mounted_app" "$source_app"
   cleanup_mount
   trap - EXIT
   rmdir "$mountpoint" 2>/dev/null || true
@@ -1614,11 +1614,30 @@ sandbox_profile_for() {
   esac
 }
 
+report_recent_sandbox_denials() {
+  local phase="$1"
+  local start="$2"
+  local predicate output
+
+  [[ "${OBSIDIAN_REPORT_SANDBOX_DENIALS:-1}" != "0" ]] || return 0
+  [[ -x /usr/bin/log ]] || return 0
+  [[ -n "$start" ]] || return 0
+
+  predicate='process == "sandboxd" OR subsystem == "com.apple.sandbox" OR eventMessage CONTAINS[c] "Sandbox:" OR eventMessage CONTAINS[c] "deny("'
+  output="$(/usr/bin/log show --style compact --start "$start" --predicate "$predicate" 2>/dev/null | /usr/bin/sed -n '1,120p')" || true
+  [[ -n "$output" ]] || return 0
+
+  print -r -- "sandbox diagnostics for failed phase $phase:" >&2
+  while IFS= read -r line; do
+    print -r -- "    $line" >&2
+  done <<< "$output"
+}
+
 run_phase() {
   local phase="$1"
   local phase_index="$2"
   local phase_total="$3"
-  local profile phase_home phase_tmp token token_file
+  local profile phase_home phase_tmp phase_log_start token token_file
   local rc
 
   profile="$(sandbox_profile_for "$phase")"
@@ -1640,6 +1659,7 @@ run_phase() {
   verify_static_policy_inputs_unchanged
   log_blank
   log "[$phase_index/$phase_total] $(phase_label "$phase")"
+  phase_log_start="$(/bin/date '+%Y-%m-%d %H:%M:%S')"
   if /usr/bin/sandbox-exec \
       -f "$profile" \
       -D ROOT="$root" \
@@ -1665,6 +1685,7 @@ run_phase() {
     log_done "$(phase_label "$phase")"
   else
     rc="$?"
+    report_recent_sandbox_denials "$phase" "$phase_log_start"
     print -r -- "error: phase failed: $(phase_label "$phase") (exit $rc)" >&2
     return "$rc"
   fi
