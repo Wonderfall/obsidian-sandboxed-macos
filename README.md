@@ -244,6 +244,8 @@ updates.
 
 ## Build sandboxed Obsidian
 
+*Read [Settings](#settings) and [Signing](#signing) for production builds.*
+
 ```sh
 ./build-sandboxed-obsidian.zsh
 ```
