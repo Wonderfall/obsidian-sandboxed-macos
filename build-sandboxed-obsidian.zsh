@@ -742,7 +742,7 @@ verify_upstream_obsidian() {
     --verify \
     --deep \
     --strict \
-    --verbose=2 \
+    --verbose=4 \
     --test-requirement "$obsidian_requirement" \
     "$app"
 
@@ -1617,14 +1617,18 @@ sandbox_profile_for() {
 report_recent_sandbox_denials() {
   local phase="$1"
   local start="$2"
-  local predicate output
+  local fallback_predicate output predicate
 
   [[ "${OBSIDIAN_REPORT_SANDBOX_DENIALS:-1}" != "0" ]] || return 0
   [[ -x /usr/bin/log ]] || return 0
   [[ -n "$start" ]] || return 0
 
-  predicate='process == "sandboxd" OR subsystem == "com.apple.sandbox" OR eventMessage CONTAINS[c] "Sandbox:" OR eventMessage CONTAINS[c] "deny("'
-  output="$(/usr/bin/log show --style compact --start "$start" --predicate "$predicate" 2>/dev/null | /usr/bin/sed -n '1,120p')" || true
+  predicate='eventMessage CONTAINS[c] "Sandbox:" AND eventMessage CONTAINS[c] "deny(" AND (eventMessage CONTAINS[c] "codesign(" OR eventMessage CONTAINS[c] "spctl(" OR eventMessage CONTAINS[c] "security" OR eventMessage CONTAINS[c] "trust" OR eventMessage CONTAINS[c] "syspolicy")'
+  output="$(/usr/bin/log show --style compact --start "$start" --predicate "$predicate" 2>/dev/null | /usr/bin/tail -n 120)" || true
+  if [[ -z "$output" ]]; then
+    fallback_predicate='eventMessage CONTAINS[c] "Sandbox:" AND eventMessage CONTAINS[c] "deny("'
+    output="$(/usr/bin/log show --style compact --start "$start" --predicate "$fallback_predicate" 2>/dev/null | /usr/bin/tail -n 80)" || true
+  fi
   [[ -n "$output" ]] || return 0
 
   print -r -- "sandbox diagnostics for failed phase $phase:" >&2
