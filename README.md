@@ -170,13 +170,13 @@ independent paths, such as:
 
 While keeping this in mind, you can follow the suggested workflow below.
 
-1. Download `allowed_signers` through an independent path, such as:
+Download `allowed_signers` through an independent path, such as:
 
 ```sh
 curl -O https://codeberg.org/Wonderfall/pubkeys/raw/branch/main/obsidian-sandboxed-macos/allowed_signers
 ```
 
-2. Further mitigate by checking `allowed_signers` before relying on it:
+Further mitigate by checking `allowed_signers` before relying on it:
 
 ```sh
 shasum -a 256 allowed_signers
@@ -190,7 +190,7 @@ f02c78685f09c1d695a6459f2f401da12e80e3fc35a34004df74cfb26adf4f08
 
 *Note: verification is stronger the more independent paths you check.*
 
-3. Proceed to verify the manifest signature:
+Proceed to verify the manifest signature:
 
 ```sh
 ssh-keygen -Y verify \
@@ -201,7 +201,7 @@ ssh-keygen -Y verify \
   < obsidian-sandboxed-macos-$version-manifest.txt
 ```
 
-4. Inspect the signed manifest and compare the archive hash:
+Inspect the signed manifest and compare the archive hash:
 
 ```sh
 cat obsidian-sandboxed-macos-$version-manifest.txt
@@ -216,7 +216,7 @@ The manifest should match the expected release metadata, especially:
 - `signing_key_fingerprint=SHA256:SpvTWBpxkzomnK4fsymKTeyU1d5s6FjOcASZN189p2E`
 - `archive_sha256` must equal the hash printed by `shasum`
 
-5. You can now unpack, preferably using Archive Utility over `tar -xzf`
+You can now unpack, preferably using Archive Utility over `tar -xzf`
 because the former is sandboxed.
 
 ### Update from an existing release
