@@ -129,14 +129,14 @@ paths, guaranteed by the cryptography provided by `openssh` (which is
 a built-in macOS tool).
 
 *A malicious source tree could weaken sandboxing, steal secrets or cause
-harm do your device. That's why extra care was put into preventing
-source/distribution compromission as much as possible.*
+harm to your device. That's why extra care was put into preventing
+source/distribution compromise as much as possible.*
 
 ### First install (TOFU mitigations)
 
 For a first install, the release signing policy is a trust-on-first-use (TOFU)
 decision. It is suggested you mitigate TOFU as much as possible to bootstrap
-trust. Generally, this can be done by verifying cryptographic assets through
+trust. Generally, this can be done by verifying release signing policy through
 independent paths, such as:
 
 - A maintainer-controlled channel
