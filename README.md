@@ -159,11 +159,27 @@ source/distribution compromission as much as possible.*
 
 ### First install (TOFU mitigations)
 
-For a first install, the release signing policy is a trust-on-first-use decision.
-Mitigate that by checking `trust/allowed_signers` before relying on it:
+For a first install, the release signing policy is a trust-on-first-use (TOFU)
+decision. It is suggested you mitigate TOFU as much as possible to bootstrap
+trust. Generally, this can be done by verifying cryptographic assets through
+independent paths, such as:
+
+- A maintainer-controlled channel
+- A previously saved copy
+- Another trusted machine/network
+
+While keeping this in mind, you can follow the suggested workflow below.
+
+1. Download `allowed_signers` through an independent path, such as:
 
 ```sh
-shasum -a 256 trust/allowed_signers
+curl -O https://codeberg.org/Wonderfall/pubkeys/raw/branch/main/obsidian-sandboxed-macos/allowed_signers
+```
+
+2. Further mitigate by checking `allowed_signers` before relying on it:
+
+```sh
+shasum -a 256 allowed_signers
 ```
 
 Expected SHA-256:
@@ -172,18 +188,42 @@ Expected SHA-256:
 f02c78685f09c1d695a6459f2f401da12e80e3fc35a34004df74cfb26adf4f08
 ```
 
-Compare that hash, or the file contents themselves, through an independent path
-if possible, such as:
+*Note: verification is stronger the more independent paths you check.*
 
-- A maintainer-controlled channel
-- A previously saved copy
-- Another trusted machine/network
+3. Proceed to verify the manifest signature:
 
-After the first trusted install, verify future updates with the
-currently trusted checkout before extracting or replacing anything, and only
-accept versions greater than the version you already trust.
+```sh
+ssh-keygen -Y verify \
+  -f allowed_signers \
+  -I release@wonderfall.dev \
+  -n obsidian-sandboxed-macos.release@wonderfall.dev \
+  -s obsidian-sandboxed-macos-$version-manifest.txt.sig \
+  < obsidian-sandboxed-macos-$version-manifest.txt
+```
+
+4. Inspect the signed manifest and compare the archive hash:
+
+```sh
+cat obsidian-sandboxed-macos-$version-manifest.txt
+shasum -a 256 obsidian-sandboxed-macos-$version.tar.gz
+```
+
+The manifest should match the expected release metadata, especially:
+
+- `format=obsidian-sandboxed-macos-release-v1`
+- `project=Wonderfall/obsidian-sandboxed-macos`
+- `archive=obsidian-sandboxed-macos-$version.tar.gz`
+- `signing_key_fingerprint=SHA256:SpvTWBpxkzomnK4fsymKTeyU1d5s6FjOcASZN189p2E`
+- `archive_sha256` must equal the hash printed by `shasum`
+
+5. You can now unpack, preferably using Archive Utility over `tar -xzf`
+because the former is sandboxed.
 
 ### Update from an existing release
+
+After first install, the current checkout becomes a trusted anchor for future updates.
+
+#### Using the built-in tool (recommended)
 
 You can have the existing trusted checkout fetch and verify a newer release
 without extracting it or replacing anything:
@@ -198,12 +238,18 @@ the archive hash, and local downgrade protection. Verified release assets are
 written under `artifacts/updates/$version/`; feel free to extract them to whatever
 location you prefer (e.g. the parent folder of the current release).
 
-If you downloaded the three release files yourself, put them in one directory,
-then verify them from an existing trusted checkout:
+#### Manually updating files
+
+If you downloaded the release files yourself, put them in one directory, then
+verify them from an existing trusted checkout:
 
 ```sh
 ./tools/verify-release.zsh /path/to/release-directory
 ```
+
+*Note: unlike the built-in downloader, the verify script alone does not enforce
+downgrade protection. As a rule, only accept a manually verified update when the
+manifest `version` is greater than the current trusted `VERSION`.*
 
 After verification succeeds, extract the archive and build from the extracted
 source tree. You can use the latter as your new trust anchor for future
