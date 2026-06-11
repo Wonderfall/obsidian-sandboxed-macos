@@ -279,12 +279,9 @@ Developer ID and notarized the app bundle. To run the app, you may need to selec
 anyway in System Settings → Privacy & Security (only once).
 
 If you had Obsidian installed before, or any other previous Obsidian build with a different
-identity, you may see an attempt to access `obsidian Safe Storage` in Keychain. Ideally,
-this would not happen if we were able to change the ASAR's `package.json`, but since it's out
-of scope for the project, the app will attempt to use and share the same Keychain Safe Storage.
-You can choose Always Allow, or Deny, depending on your use of the Keychain features in Obsidian.
-Deny shouldn't break other unrelated features. Alternatively, you can remove `obsidian Safe Storage`
-in Keychain Access before reinstalling Obsidian with another identity.
+identity, you may see an attempt to access `obsidian Safe Storage` in Keychain. This behavior
+is normal and [documented](#known-limitations). You can choose Always Allow or Deny based
+on how you trust this build; this will only affect keychain-related features.
 
 Generally, Obsidian Sandboxed does not share the same storage and preferences
 as the original Obsidian app. As with any sandboxed app, app data mostly lives in
@@ -547,6 +544,11 @@ separately if you want to.
 same `obsidian Safe Storage` in Keychain. This can be allowed/denied when prompted,
 but ideally, each build should get is own Safe Storage based on app name. This is possible
 by patching `app.asar`, but the proper way to do it is still being explored at the moment.
+- Furthermore, if you use ad hoc signing or even with self-signing, you may get a prompt
+to use `obsidian Safe Storage` after each app bundle update. While this is expected for
+ad hoc signining because it does not persist identity across builds, this seems to also be
+the case for self-signing; despite cryptographically having identity persistence, Keychain
+seems to also require a fixed `TeamIdentifier` which can only be obtained from Apple.
 - Enabling the renderer sandbox was considered (it is disabled on default Obsidian
 builds), but it is currently not feasible without patching `obsidian.asar`, and
 maintaining the changes. Also, changes made to `obsidian.asar` can be reverted across
