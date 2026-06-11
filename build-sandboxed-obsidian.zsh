@@ -387,8 +387,6 @@ configure_build() {
   [[ "$team_id" =~ '^[A-Z0-9]{10}$' ]] || die "invalid effective team_id"
   output_app_name="${OBSIDIAN_OUTPUT_APP_NAME:-Obsidian Sandboxed}"
   [[ "$output_app_name" =~ '^[A-Za-z0-9][A-Za-z0-9 .,_()&+-]*$' ]] || die "invalid output app name"
-  output_bundle_name="${OBSIDIAN_OUTPUT_BUNDLE_NAME:-Obsidian Sandboxed}"
-  [[ "$output_bundle_name" =~ '^[A-Za-z0-9][A-Za-z0-9 .,_()&+-]*$' ]] || die "invalid output bundle name"
   output_bundle_id="${OBSIDIAN_OUTPUT_BUNDLE_ID:-dev.local.sandboxed.obsidian}"
   [[ "$output_bundle_id" =~ '^[A-Za-z0-9][A-Za-z0-9-]*(\.[A-Za-z0-9][A-Za-z0-9-]*)+$' ]] || die "invalid output bundle id"
   sign_identity="${SIGN_IDENTITY:--}"
@@ -887,7 +885,7 @@ unpack_verify_obsidian() {
 output_helper_name() {
   local suffix="$1"
 
-  print -r -- "$output_bundle_name Helper${suffix}"
+  print -r -- "$output_app_name Helper${suffix}"
 }
 
 helper_bundle_id_for_suffix() {
@@ -1214,7 +1212,7 @@ validate_stage_tree() {
   [[ -f "$electron_info" ]] || die "missing staged Electron Info.plist: $electron_info"
 
   expect_plist_string "$info_plist" CFBundleIdentifier "$output_bundle_id"
-  expect_plist_string "$info_plist" CFBundleName "$output_bundle_name"
+  expect_plist_string "$info_plist" CFBundleName "$output_app_name"
   expect_plist_string "$info_plist" CFBundleExecutable "Obsidian"
   expect_plist_string "$info_plist" ElectronTeamID "$team_id"
   expect_plist_string "$electron_info" CFBundleVersion "$electron_version"
@@ -1270,7 +1268,7 @@ stage_app_bundle() {
 
   log_detail "Writing output bundle metadata"
   plist_set_string "$stage_app/Contents/Info.plist" CFBundleIdentifier "$output_bundle_id"
-  plist_set_string "$stage_app/Contents/Info.plist" CFBundleName "$output_bundle_name"
+  plist_set_string "$stage_app/Contents/Info.plist" CFBundleName "$output_app_name"
   plist_set_string "$stage_app/Contents/Info.plist" CFBundleDisplayName "$output_app_name"
   plist_set_string "$stage_app/Contents/Info.plist" ElectronTeamID "$team_id"
   log_detail "Validating staged app inventory"
@@ -1648,7 +1646,6 @@ run_phase() {
         OBSIDIAN_PHASE_TMP="$phase_tmp" \
         OBSIDIAN_APP_GROUP_TEAM_ID="${OBSIDIAN_APP_GROUP_TEAM_ID:-}" \
         OBSIDIAN_OUTPUT_APP_NAME="${OBSIDIAN_OUTPUT_APP_NAME:-}" \
-        OBSIDIAN_OUTPUT_BUNDLE_NAME="${OBSIDIAN_OUTPUT_BUNDLE_NAME:-}" \
         OBSIDIAN_OUTPUT_BUNDLE_ID="${OBSIDIAN_OUTPUT_BUNDLE_ID:-}" \
         SIGN_IDENTITY="${SIGN_IDENTITY:-}" \
         SIGN_TIMESTAMP="${SIGN_TIMESTAMP:-}" \

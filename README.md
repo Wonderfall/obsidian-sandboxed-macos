@@ -318,9 +318,9 @@ to do a rebuild to update the `Installer` (and thus Electron), which is recommen
 ### Obsidian updates (in-app updater)
 
 Obsidian updates can be handled within the Obsidian app directly. They're distributed
-as ASAR updates that live in app data (`~/Library/Containers`). This still works
-perfectly fine and you should be able to get new Obsidian fixes and features without
-doing a full rebuild.
+as ASAR updates (`obsidian.asar`) that live in app data (`~/Library/Containers`).
+This still works perfectly fine and you should be able to get new Obsidian fixes and
+features without doing a full rebuild.
 
 ### Electron updates (rebuild required)
 
@@ -351,23 +351,19 @@ Settings are provided as environment variables.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `OBSIDIAN_OUTPUT_APP_NAME` | `Obsidian Sandboxed` | Sets the `.app` directory name and `CFBundleDisplayName`. |
-| `OBSIDIAN_OUTPUT_BUNDLE_NAME` | `Obsidian Sandboxed` | Sets `CFBundleName`; helper bundle and executable names are derived from it. |
+| `OBSIDIAN_OUTPUT_APP_NAME` | `Obsidian Sandboxed` | Sets the `.app` directory name, `CFBundleName`, `CFBundleDisplayName`, and the helper bundle and executable names derived from it. |
 | `OBSIDIAN_OUTPUT_BUNDLE_ID` | `dev.local.sandboxed.obsidian` | Sets the main app bundle id; helper bundle ids are derived from it. |
 | `OBSIDIAN_APP_GROUP_TEAM_ID` | `LOCALOBSDN` | Sets the prefix used for `ElectronTeamID` and the application group. |
 | `SIGN_IDENTITY` | `-` | Code signing identity. `-` means ad hoc signing. |
 | `SIGN_TIMESTAMP` | `auto` | Timestamp signing when set to `1`; disable with `0`. `auto` enables timestamping for `Developer ID Application:` identities. Rejected with ad hoc signing. |
 
-Examples:
+Example:
 
 ```sh
-OBSIDIAN_OUTPUT_BUNDLE_ID="dev.local.my-obsidian" ./build-sandboxed-obsidian.zsh
-
 OBSIDIAN_OUTPUT_APP_NAME="Obsidian Magic" \
-OBSIDIAN_OUTPUT_BUNDLE_NAME="Obsidian Magic" \
+OBSIDIAN_OUTPUT_BUNDLE_ID="dev.local.my-obsidian" \
+SIGN_IDENTITY="Your Code Signing Identity" \
 ./build-sandboxed-obsidian.zsh
-
-SIGN_IDENTITY="Your Code Signing Identity" ./build-sandboxed-obsidian.zsh
 ```
 
 ## Signing
@@ -547,6 +543,14 @@ separately if you want to.
 
 ## Known limitations
 
-This build does not enable Electron's renderer sandbox or V8 jitless mode. Such
-hardening is possible but requires ASAR file patching, which is currently not
-in the scope of this project due to maintenance pressure.
+- As mentioned [above](#use-sandboxed-obsidian), all Obsidian builds will share the
+same `obsidian Safe Storage` in Keychain. This can be allowed/denied when prompted,
+but ideally, each build should get is own Safe Storage based on app name. This is possible
+by patching `app.asar`, but the proper way to do it is still being explored at the moment.
+- Enabling the renderer sandbox was considered (it is disabled on default Obsidian
+builds), but it is currently not feasible without patching `obsidian.asar`, and
+maintaining the changes. Also, changes made to `obsidian.asar` can be reverted across
+in-app updates if automatic updates are enabled.
+- V8 JITless mode was considered and could be enabled early in the `app.asar`
+bootstrap payload, but it would break some popular community extensions that rely
+on WebAssembly to function.
