@@ -542,7 +542,7 @@ separately if you want to.
 
 - As mentioned [above](#use-sandboxed-obsidian), all Obsidian builds will share the
 same `obsidian Safe Storage` in Keychain. This can be allowed/denied when prompted,
-but ideally, each build should get is own Safe Storage based on app name. This is possible
+but ideally, each build should get its own Safe Storage based on app name. This is possible
 by patching `app.asar`, but the proper way to do it is still being explored at the moment.
 - Furthermore, if you use ad hoc signing or even with self-signing, you may get a prompt
 to use `obsidian Safe Storage` after each app bundle update. While this is expected for
