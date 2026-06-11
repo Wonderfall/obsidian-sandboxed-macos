@@ -547,8 +547,8 @@ by patching `app.asar`, but the proper way to do it is still being explored at t
 - Furthermore, if you use ad hoc signing or even with self-signing, you may get a prompt
 to use `obsidian Safe Storage` after each app bundle update. While this is expected for
 ad hoc signining because it does not persist identity across builds, this seems to also be
-the case for self-signing; despite cryptographically having identity persistence, Keychain
-seems to also require a fixed `TeamIdentifier` which can only be obtained from Apple.
+the case for self-signing despite cryptographic continuity. The most likely explanation is
+that Keychain seems to also require an Apple-backed team identity.
 - Enabling the renderer sandbox was considered (it is disabled on default Obsidian
 builds), but it is currently not feasible without patching `obsidian.asar`, and
 maintaining the changes. Also, changes made to `obsidian.asar` can be reverted across
