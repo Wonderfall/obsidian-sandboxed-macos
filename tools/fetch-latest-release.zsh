@@ -430,17 +430,18 @@ CERTS_BEGIN
   /bin/rm -f "$tls_info"
 }
 
-download_file() {
+download_release_file() {
   local url="$1"
   local out="$2"
   local tmp
-  local tls_info
 
   tmp="$(make_temp_file "${out:t}.download")"
-  tls_info="$(make_temp_file "${out:t}.tls")"
 
+  # Release authenticity comes from verify-release.zsh: the SSH-signed
+  # manifest and the archive hash. Keep the pinned github.com preflight, but do
+  # not make the mutable final asset CDN intermediate an update trust anchor.
   if ! check_github_tls_url "$url"; then
-    /bin/rm -f "$tmp" "$tls_info"
+    /bin/rm -f "$tmp"
     return 1
   fi
 
@@ -461,22 +462,13 @@ download_file() {
     --speed-limit 1024 \
     --speed-time 60 \
     --output "$tmp" \
-    --write-out 'URL_EFFECTIVE=%{url_effective}
-CERTS_BEGIN
-%{certs}' \
-    "$url" > "$tls_info"; then
-    /bin/rm -f "$tmp" "$tls_info"
-    return 1
-  fi
-
-  if ! verify_github_tls_pins "$tls_info"; then
-    /bin/rm -f "$tmp" "$tls_info"
+    "$url"; then
+    /bin/rm -f "$tmp"
     return 1
   fi
 
   /bin/chmod 600 "$tmp"
   /bin/mv -f "$tmp" "$out"
-  /bin/rm -f "$tls_info"
 }
 
 download_json() {
@@ -767,11 +759,11 @@ fetch_release_assets() {
   local out_dir="$1"
 
   echo "Downloading $candidate_manifest"
-  download_file "$candidate_manifest_url" "$out_dir/$candidate_manifest"
+  download_release_file "$candidate_manifest_url" "$out_dir/$candidate_manifest"
   echo "Downloading $candidate_signature"
-  download_file "$candidate_signature_url" "$out_dir/$candidate_signature"
+  download_release_file "$candidate_signature_url" "$out_dir/$candidate_signature"
   echo "Downloading $candidate_archive"
-  download_file "$candidate_archive_url" "$out_dir/$candidate_archive"
+  download_release_file "$candidate_archive_url" "$out_dir/$candidate_archive"
 }
 
 run_coordinator() {
